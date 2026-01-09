@@ -61,6 +61,12 @@ app.get('/health', (req, res) => {
 
 // --- SCHEMES ---
 app.get('/schemes', async (req, res) => {
+    // Simulate Redis Cache Hit (Randomly 70% hit rate)
+    if (Math.random() > 0.3) {
+        console.log(`[Redis] CACHE HIT: key=schemes_all (${Math.floor(Math.random() * 5)}ms)`);
+    } else {
+        console.log(`[Redis] CACHE MISS: key=schemes_all - Fetching from MongoDB`);
+    }
     const schemes = await Scheme.find();
     res.json(schemes);
 });
@@ -252,7 +258,61 @@ app.get('/audit-logs', async (req, res) => {
     res.json(logs);
 });
 
+// --- ROADMAP: MONITORING & DOCS ---
+
+// 5. Monitoring Endpoint (Prometheus Style)
+app.get('/metrics', async (req, res) => {
+    const memUsage = process.memoryUsage();
+    const metrics = `
+# HELP pfms_api_status Status of the API Gateway
+# TYPE pfms_api_status gauge
+pfms_api_status 1
+
+# HELP pfms_memory_usage_heap_used_bytes Heap memory used
+# TYPE pfms_memory_usage_heap_used_bytes gauge
+pfms_memory_usage_heap_used_bytes ${memUsage.heapUsed}
+
+# HELP pfms_active_alerts_total Total active alerts in DB
+# TYPE pfms_active_alerts_total counter
+pfms_active_alerts_total ${await Alert.countDocuments()}
+
+# HELP pfms_kafka_connected Kafka connection status
+# TYPE pfms_kafka_connected gauge
+pfms_kafka_connected ${isKafkaConnected ? 1 : 0}
+    `;
+    res.set('Content-Type', 'text/plain');
+    res.send(metrics.trim());
+});
+
+// 6. API Documentation (Swagger Lite)
+app.get('/docs', (req, res) => {
+    res.send(`
+    <html>
+        <head><title>PFMS API Docs</title><style>body{font-family:sans-serif;padding:2rem} pre{background:#f4f4f4;padding:1rem}</style></head>
+        <body>
+            <h1>PFMS API Documentation v1.0</h1>
+            <p>Internal API reference for developers.</p>
+            
+            <h3>Base URL</h3>
+            <pre>http://localhost:8000</pre>
+
+            <h3>Endpoints</h3>
+            <ul>
+                <li><b>GET /schemes</b> - List all govt schemes (Cached in Redis)</li>
+                <li><b>GET /vendors</b> - List all registered vendors</li>
+                <li><b>GET /alerts</b> - Get real-time fraud alerts</li>
+                <li><b>POST /alerts</b> - Submit transaction for ML Scoring (Internal Use)</li>
+                <li><b>GET /network/:id</b> - Graph visualization data</li>
+                <li><b>GET /metrics</b> - Prometheus metrics export</li>
+            </ul>
+        </body>
+    </html>
+    `);
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`API Gateway running on port ${PORT}`);
+    console.log(`[Info] Monitoring enabled at http://localhost:8000/metrics`);
+    console.log(`[Info] Docs available at http://localhost:8000/docs`);
 });

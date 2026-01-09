@@ -1,0 +1,51 @@
+name: PFMS Production Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install Dependencies
+      run: npm install
+      
+    - name: Build Clients
+      run: npm run build --workspace=client
+      
+    - name: Run Backend Tests
+      run: echo "Running Unit Tests..." && npm test --workspace=api-gateway --if-present
+      
+    - name: Verify ML Service
+      run: |
+        pip install -r ml-service/requirements.txt
+        python -c "import pandas; import sklearn; print('ML Environment Healthy')"
+
+  docker-push:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Docker Image
+        run: docker build . -t pfms-guard:latest
+      # - name: Push to Registry
+      #   run: docker push myregistry/pfms-guard:latest

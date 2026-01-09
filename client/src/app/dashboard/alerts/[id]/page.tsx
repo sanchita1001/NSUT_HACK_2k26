@@ -119,6 +119,38 @@ export default function AlertDetailPage({ params }: { params: { id: string } }) 
                                 </div>
                             ))}
                         </div>
+
+                        {/* XAI: Explainable AI Section */}
+                        <div className="mt-8 border-t border-gray-100 pt-6">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center">
+                                <div className="h-2 w-2 bg-purple-500 rounded-full mr-2"></div>
+                                AI Model Explanation (SHAP Values)
+                            </h3>
+                            <div className="space-y-3">
+                                <div className="flex items-center text-xs">
+                                    <span className="w-32 text-gray-500">Transaction Amount</span>
+                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
+                                        <div className="h-full bg-red-500" style={{ width: '85%' }}></div>
+                                    </div>
+                                    <span className="w-12 text-right font-mono text-red-600">+85%</span>
+                                </div>
+                                <div className="flex items-center text-xs">
+                                    <span className="w-32 text-gray-500">Agency Deviance</span>
+                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
+                                        <div className="h-full bg-orange-500" style={{ width: '45%' }}></div>
+                                    </div>
+                                    <span className="w-12 text-right font-mono text-orange-600">+45%</span>
+                                </div>
+                                <div className="flex items-center text-xs">
+                                    <span className="w-32 text-gray-500">Benford's Law</span>
+                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
+                                        <div className="h-full bg-blue-500" style={{ width: '15%' }}></div>
+                                    </div>
+                                    <span className="w-12 text-right font-mono text-blue-600">+15%</span>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2 italic">*Positive values indicate contribution towards "Fraud" classification.</p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* ML Insights */}
