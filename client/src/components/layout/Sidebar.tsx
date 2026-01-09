@@ -11,7 +11,10 @@ import {
     ShieldCheck,
     Settings,
     LogOut,
-    Landmark
+    Landmark,
+    Share2,
+    Map,
+    Activity
 } from "lucide-react";
 import { UserRole } from "@fds/common";
 
@@ -20,7 +23,10 @@ const navItems = [
     { name: "Live Alerts", href: "/dashboard/alerts", icon: AlertTriangle },
     { name: "Schemes", href: "/dashboard/schemes", icon: FileText },
     { name: "Vendors", href: "/dashboard/vendors", icon: Building2 },
-    { name: "Audit Logs", href: "/dashboard/audit", icon: ShieldCheck },
+    { name: "Visual Network", href: "/dashboard/network", icon: Share2 },
+    { name: "Geo Map", href: "/dashboard/map", icon: Map },
+    { name: "Simulator", href: "/dashboard/simulator", icon: Activity },
+    { name: "Audit Logs", href: "/dashboard/audit", icon: FileText },
 ];
 
 export function Sidebar() {
@@ -45,8 +51,8 @@ export function Sidebar() {
                             key={item.name}
                             href={item.href}
                             className={`flex items-center px-4 py-3 text-sm font-medium rounded-sm transition-colors ${isActive
-                                    ? "bg-blue-900 text-white border-l-4 border-orange-500"
-                                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                ? "bg-blue-900 text-white border-l-4 border-orange-500"
+                                : "text-slate-300 hover:bg-slate-800 hover:text-white"
                                 }`}
                         >
                             <item.icon className={`h-5 w-5 mr-3 ${isActive ? "text-orange-500" : "text-slate-400"}`} />
