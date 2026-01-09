@@ -9,20 +9,21 @@ A government-grade, production-ready web platform for monitoring financial trans
 - Python 3.10+ (for ML Service)
 - Kafka (Optional for Dev, Mocked by default)
 
-### Running the Application (Dev Mode)
-The project represents a monorepo containing the Client and API Gateway. You can run all services with a single command:
+## Quick Start 🚀
+
+The entire system (Frontend, Backend, ML Engine, Kafka) can be launched with **one command**:
 
 ```bash
-# Install dependencies (First time)
-npm install
-
-# Run entire stack (Frontend + Backend)
 npm run dev
 ```
 
-This will start:
-- **Client (Frontend)**: [http://localhost:3000](http://localhost:3000)
-- **API Gateway**: [http://localhost:8000](http://localhost:8000)
+This will concurrently start:
+1.  **Client (Next.js)**: `http://localhost:3000`
+2.  **API Gateway**: `http://localhost:8000`
+3.  **ML Engine (Python)**: `http://localhost:5000`
+4.  **Kafka (Docker)**: `localhost:9092` (Requires Docker Desktop)
+
+*Note: If you don't have Docker, the system will automatically fall back to HTTP-only mode for resilience.*
 
 ## 🏗 System Architecture
 
