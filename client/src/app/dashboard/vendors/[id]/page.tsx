@@ -39,13 +39,17 @@ export default function VendorProfilePage({ params }: { params: { id: string } }
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">{vendor.name}</h1>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                            <span className="font-mono bg-gray-100 px-2 py-0.5 rounded mr-3">GSTIN: {vendor.gstin}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${vendor.accountStatus === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>{vendor.accountStatus}</span>
+                        <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-sm text-gray-500">GSTIN: {vendor.gstin}</span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${vendor.accountStatus === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {vendor.accountStatus}
+                            </span>
                         </div>
                     </div>
                 </div>
+                <a href={`/dashboard/network?entityId=${vendor.id}`} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-100 flex items-center">
+                    View Link Graph
+                </a>
                 <div className="text-right">
                     <p className="text-sm text-gray-500">Risk Score</p>
                     <div className={`text-3xl font-bold ${vendor.riskScore > 50 ? 'text-red-600' : 'text-green-600'
