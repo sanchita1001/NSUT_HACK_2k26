@@ -19,17 +19,19 @@ export default function AlertsPage() {
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        async function fetchAlerts() {
-            try {
-                const res = await fetch('http://localhost:8000/alerts');
-                if (res.ok) {
-                    const data = await res.json();
-                    setAlerts(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch alerts", err);
-            } finally {
+    const fetchAlerts = async (initialLoad = false) => {
+        try {
+            const res = await fetch('http://localhost:8000/alerts');
+            if (res.ok) {
+                const data = await res.json();
+                setAlerts(data);
+            } else {
+                console.error("Failed to fetch alerts: ", res.status, res.statusText);
+            }
+        } catch (error) {
+            console.error("Failed to fetch alerts", error);
+        } finally {
+            if (initialLoad) {
                 setLoading(false);
             }
         }
@@ -69,8 +71,8 @@ export default function AlertsPage() {
                             key={status}
                             onClick={() => setFilterStatus(status)}
                             className={`text-sm font-medium px-3 py-1 rounded-full ${filterStatus === status
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                ? "bg-blue-100 text-blue-800"
+                                : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                 }`}
                         >
                             {status}
@@ -96,7 +98,7 @@ export default function AlertsPage() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                         <AlertTriangle className={`h-4 w-4 mr-2 ${alert.riskScore > 90 ? "text-red-600" :
-                                                alert.riskScore > 75 ? "text-orange-500" : "text-yellow-500"
+                                            alert.riskScore > 75 ? "text-orange-500" : "text-yellow-500"
                                             }`} />
                                         <span className="text-sm font-medium text-blue-600">{alert.id}</span>
                                     </div>
@@ -105,9 +107,9 @@ export default function AlertsPage() {
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{alert.scheme}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${alert.riskLevel === "Critical" ? "bg-red-100 text-red-800" :
-                                            alert.riskLevel === "High" ? "bg-orange-100 text-orange-800" :
-                                                alert.riskLevel === "Medium" ? "bg-yellow-100 text-yellow-800" :
-                                                    "bg-green-100 text-green-800"
+                                        alert.riskLevel === "High" ? "bg-orange-100 text-orange-800" :
+                                            alert.riskLevel === "Medium" ? "bg-yellow-100 text-yellow-800" :
+                                                "bg-green-100 text-green-800"
                                         }`}>
                                         {alert.riskLevel} ({alert.riskScore})
                                     </span>
