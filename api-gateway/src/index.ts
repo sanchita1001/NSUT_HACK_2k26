@@ -92,6 +92,37 @@ app.get('/alerts/:id', async (req, res) => {
     const alert = await Alert.findOne({ id: req.params.id });
     if (alert) res.json(alert); else res.sendStatus(404);
 });
+app.post('/alerts', async (req, res) => {
+    try {
+        // Simulator sends { scheme, amount, riskScore, ... }
+        // We generate ID and timestamp
+        const newAlert = await Alert.create({
+            id: `ALT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+            date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+            timestamp: new Date().toISOString(),
+            status: "New",
+            riskLevel: req.body.riskScore > 80 ? "Critical" : "High",
+            ...req.body,
+            // Defaults for simulation
+            beneficiary: req.body.beneficiary || "Unknown Beneficiary",
+            account: "XX-" + Math.floor(1000 + Math.random() * 9000),
+            district: "Simulated District",
+            mlReasons: ["Simulation Engine: Pattern Match", "Velocity Check Failed"],
+            hierarchy: []
+        });
+
+        // Also log this action
+        await AuditLog.create({
+            id: `LOG-${Date.now()}`,
+            action: "SIMULATION_EVENT",
+            actor: "Simulator Host",
+            target: newAlert.id,
+            details: `Injected synthetic fraud alert with risk score ${newAlert.riskScore}`
+        });
+
+        res.json(newAlert);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 
 // --- AUDIT LOGS ---
 app.get('/audit-logs', async (req, res) => {

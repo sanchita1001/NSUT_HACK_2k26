@@ -12,16 +12,38 @@ export default function SimulatorPage() {
         setLoading(true);
         setResult(null);
 
-        // Mock API call simulation
-        setTimeout(() => {
-            setLoading(false);
-            setResult({
-                riskScore: 88,
-                status: "FLAGGED",
-                reasons: ["Amount exceeds daily threshold (300%)", "New Beneficiary Account"],
-                id: "SIM-2026-X99"
+        // Read form data (simplified for demo)
+        const form = e.target as HTMLFormElement;
+        const amount = (form.elements.namedItem('amount') as HTMLInputElement).value;
+        const scheme = (form.elements.namedItem('scheme') as HTMLSelectElement).value;
+
+        try {
+            const response = await fetch('http://localhost:8000/alerts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheme,
+                    amount: parseInt(amount),
+                    riskScore: Math.floor(85 + Math.random() * 14), // Random High Risk
+                    beneficiary: "Simulated Beneficiary",
+                })
             });
-        }, 2000);
+
+            if (!response.ok) throw new Error("Simulation Failed");
+            const data = await response.json();
+
+            setResult({
+                riskScore: data.riskScore,
+                status: "FLAGGED & PERSISTED",
+                reasons: data.mlReasons,
+                id: data.id
+            });
+        } catch (err) {
+            console.error(err);
+            alert("Failed to run simulation");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -41,7 +63,7 @@ export default function SimulatorPage() {
                     <form onSubmit={handleSimulate} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Scheme</label>
-                            <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
+                            <select name="scheme" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm">
                                 <option>PM-KISAN</option>
                                 <option>MGNREGA</option>
                                 <option>Direct Transfer</option>
@@ -49,7 +71,7 @@ export default function SimulatorPage() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Amount (₹)</label>
-                            <input type="number" defaultValue={50000} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
+                            <input name="amount" type="number" defaultValue={50000} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 sm:text-sm" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Beneficiary ID</label>
