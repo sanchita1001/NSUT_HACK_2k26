@@ -17,9 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import IsolationForest
 
-import tensorflow as tf
-from tensorflow.keras import layers, losses
-from tensorflow.keras import models
+
 
 from fastapi import FastAPI
 from pydantic import BaseModel
