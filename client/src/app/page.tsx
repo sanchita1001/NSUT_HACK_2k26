@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Lock, Mail, AlertCircle, CheckCircle } from "lucide-react";
+import { API_ENDPOINTS, apiCall } from "@/lib/config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,18 +19,10 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const data = await apiCall<{ token: string; user: any }>(API_ENDPOINTS.LOGIN, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Login failed');
-      }
-
-      const data = await response.json();
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));

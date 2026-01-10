@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
-import { Alert, AuditLog } from '../models'; // Assumes models/index.ts exports these
+import { Alert, AuditLog } from '../models';
 import { MLService } from '../services/ml.service';
 import { NotificationService } from '../services/notification.service';
+import { AuditLogService, AuditEventType } from '../services/audit.service';
 import { Kafka } from 'kafkajs';
 
-// Kafka Setup (Simplistic for now, ideally moved to a separate service)
+// Kafka Setup
 const kafka = new Kafka({
     clientId: 'api-gateway',
     brokers: ['localhost:9092'],
@@ -22,11 +23,109 @@ let isKafkaConnected = false;
 
 export class AlertController {
 
+    /**
+     * Get detailed alert information by ID
+     * Complete investigation view with all related data
+     */
+    static async getAlertById(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const user = (req as any).user;
+
+            // Find the alert
+            const alert = await Alert.findOne({ id });
+
+            if (!alert) {
+                return res.status(404).json({ error: 'Alert not found' });
+            }
+
+            // Get audit logs for this alert (timeline)
+            const auditLogs = await AuditLog.find({
+                target: new RegExp(`Alert:${id}`, 'i')
+            }).sort({ timestamp: -1 }).limit(50);
+
+            // Get related alerts (same vendor or scheme)
+            const relatedAlerts = await Alert.find({
+                $or: [
+                    { vendor: alert.vendor },
+                    { scheme: alert.scheme }
+                ],
+                id: { $ne: id } // Exclude current alert
+            }).limit(10).sort({ timestamp: -1 });
+
+            // Get vendor history
+            const vendorAlerts = await Alert.find({
+                vendor: alert.vendor
+            }).sort({ timestamp: -1 });
+
+            const vendorStats = {
+                totalAlerts: vendorAlerts.length,
+                averageRiskScore: vendorAlerts.reduce((sum, a) => sum + a.riskScore, 0) / vendorAlerts.length || 0,
+                highRiskCount: vendorAlerts.filter(a => a.riskScore > 70).length,
+                totalVolume: vendorAlerts.reduce((sum, a) => sum + a.amount, 0),
+            };
+
+            // Calculate risk score breakdown
+            const riskBreakdown = {
+                baseScore: alert.riskScore,
+                mlScore: alert.riskScore,
+                vendorHistory: vendorStats.averageRiskScore > 60 ? 20 : 0,
+                amountAnomaly: alert.amount > 1000000 ? 15 : 0,
+                frequencyAnomaly: vendorAlerts.filter(a => {
+                    const alertTime = new Date(a.timestamp).getTime();
+                    const currentTime = new Date(alert.timestamp).getTime();
+                    return Math.abs(alertTime - currentTime) < 24 * 60 * 60 * 1000;
+                }).length > 5 ? 25 : 0,
+            };
+
+            // Log the view action
+            await AuditLogService.logAlert(
+                AuditEventType.ALERT_VIEWED,
+                alert,
+                user || { id: 'anonymous', name: 'Anonymous', role: 'viewer' },
+                undefined,
+                undefined,
+                { viewedAt: new Date().toISOString() }
+            );
+
+            // Return comprehensive alert data
+            return res.json({
+                alert: alert.toObject(),
+                timeline: auditLogs.map(log => ({
+                    id: log.id,
+                    timestamp: log.timestamp,
+                    eventType: log.eventType,
+                    actor: log.actor,
+                    action: log.action,
+                    details: log.details,
+                })),
+                relatedAlerts: relatedAlerts.map(a => ({
+                    id: a.id,
+                    riskScore: a.riskScore,
+                    amount: a.amount,
+                    status: a.status,
+                    timestamp: a.timestamp,
+                })),
+                vendorStats,
+                riskBreakdown,
+                metadata: {
+                    viewedAt: new Date().toISOString(),
+                    viewedBy: user?.name || 'Anonymous',
+                }
+            });
+
+        } catch (error) {
+            console.error('Get alert by ID failed:', error);
+            return res.status(500).json({ error: 'Failed to fetch alert details' });
+        }
+    }
+
     static async createAlert(req: Request, res: Response) {
         try {
             const { amount, scheme, vendor, beneficiary, description, district } = req.body;
+            const user = (req as any).user;
 
-            // ===== FEATURE 1: INPUT VALIDATION =====
+            // Input validation
             if (!amount || amount <= 0) {
                 return res.status(400).json({ error: 'Amount must be positive' });
             }
@@ -37,14 +136,14 @@ export class AlertController {
                 return res.status(400).json({ error: 'Vendor is required' });
             }
 
-            // 1. Get Risk Score from ML Service
+            // Get ML risk score
             const mlResult = await MLService.predictFraud({
                 amount: Number(amount),
                 agency: scheme || "Unknown",
                 vendor: vendor || "Unknown"
             });
 
-            // ===== FEATURE 3: VENDOR HISTORY TRACKING =====
+            // Vendor history tracking
             const vendorAlerts = await Alert.find({ vendor: vendor });
             const avgVendorRisk = vendorAlerts.length > 0
                 ? vendorAlerts.reduce((sum, a) => sum + a.riskScore, 0) / vendorAlerts.length
@@ -52,10 +151,10 @@ export class AlertController {
 
             if (avgVendorRisk > 60 && vendorAlerts.length >= 3) {
                 mlResult.riskScore += 20;
-                mlResult.mlReasons.push(`Vendor has high average risk score (${avgVendorRisk.toFixed(0)})`);
+                mlResult.mlReasons.push(`Vendor has high average risk score: ${avgVendorRisk.toFixed(1)}`);
             }
 
-            // ===== FEATURE 4: TRANSACTION FREQUENCY DETECTION =====
+            // Transaction frequency detection
             const recentCount = await Alert.countDocuments({
                 vendor: vendor,
                 timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }
@@ -63,15 +162,15 @@ export class AlertController {
 
             if (recentCount >= 5) {
                 mlResult.riskScore += 25;
-                mlResult.mlReasons.push(`High transaction frequency: ${recentCount} transactions in 24 hours`);
+                mlResult.mlReasons.push(`High transaction frequency: ${recentCount} in 24 hours`);
             }
 
-            // ===== FEATURE 6: DUPLICATE TRANSACTION DETECTION =====
+            // Duplicate transaction detection
             const duplicate = await Alert.findOne({
                 amount: Number(amount),
                 vendor: vendor,
                 scheme: scheme,
-                timestamp: { $gte: new Date(Date.now() - 60 * 60 * 1000).toISOString() } // Last hour
+                timestamp: { $gte: new Date(Date.now() - 60 * 60 * 1000).toISOString() }
             });
 
             if (duplicate) {
@@ -79,92 +178,143 @@ export class AlertController {
                 mlResult.mlReasons.push(`Duplicate transaction detected (similar to ${duplicate.id})`);
             }
 
-            // Cap risk score at 99
-            mlResult.riskScore = Math.min(99, mlResult.riskScore);
-
-            // ===== FEATURE 2: PROPER RISK LEVEL CLASSIFICATION =====
+            // Risk level classification
             const getRiskLevel = (score: number): string => {
                 if (score >= 80) return 'Critical';
                 if (score >= 60) return 'High';
                 if (score >= 40) return 'Medium';
                 return 'Low';
             };
+
             const riskLevel = getRiskLevel(mlResult.riskScore);
 
-            // Map districts to real coordinates (India)
-            const districtCoords: Record<string, { lat: number, lng: number }> = {
-                "Lucknow": { lat: 26.8467, lng: 80.9462 },
-                "Patna": { lat: 25.5941, lng: 85.1376 },
-                "Mumbai": { lat: 19.0760, lng: 72.8777 },
-                "New Delhi": { lat: 28.6139, lng: 77.2090 }
+            // District assignment
+            const districtCoords: { [key: string]: [number, number] } = {
+                "North Delhi": [28.7041, 77.1025],
+                "South Delhi": [28.5355, 77.2500],
+                "East Delhi": [28.6692, 77.3150],
+                "West Delhi": [28.6517, 77.1389],
+                "Central Delhi": [28.6448, 77.2167],
             };
 
-            // Use provided district or default
-            const alertDistrict = district || ["Lucknow", "Patna", "Mumbai", "New Delhi"][Math.floor(Math.random() * 4)];
-            const coords = districtCoords[alertDistrict] || { lat: 20.5937, lng: 78.9629 }; // India center
+            const assignedDistrict = district || Object.keys(districtCoords)[Math.floor(Math.random() * 5)];
+            const coords = districtCoords[assignedDistrict] || [28.6139, 77.2090];
 
-            // 3. Create Alert Record
+            // Create alert
             const newAlert = await Alert.create({
-                id: `ALT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-                date: new Date().toISOString().split('T')[0],
-                timestamp: new Date().toISOString(),
-                status: "New",
-                riskLevel,
-                riskScore: mlResult.riskScore,
-                mlReasons: mlResult.mlReasons,
-                amount: Number(amount),
-                scheme: scheme || "Unknown",
-                vendor: vendor || "Unknown",
+                id: `ALERT-${Date.now()}`,
+                scheme,
+                vendor,
                 beneficiary: beneficiary || "Unknown",
-                account: "XX-" + Math.floor(1000 + Math.random() * 9000),
-                district: alertDistrict,
-                latitude: coords.lat,
-                longitude: coords.lng,
-                hierarchy: []
+                amount: Number(amount),
+                riskScore: Math.min(mlResult.riskScore, 100),
+                riskLevel,
+                status: "New",
+                timestamp: new Date().toISOString(),
+                mlReasons: mlResult.mlReasons,
+                district: assignedDistrict,
+                coordinates: coords,
+                description: description || `Potential fraud detected in ${scheme}`
             });
 
-            // 4. Kafka Event (Fire and Forget)
+            // Kafka notification
             if (isKafkaConnected) {
-                producer.send({
-                    topic: 'suspicious_transactions',
-                    messages: [{
-                        value: JSON.stringify({
-                            eventId: `EVT-${Date.now()}`,
-                            type: 'RISK_SCORED',
-                            alertId: newAlert.id,
-                            riskScore: mlResult.riskScore,
-                            riskLevel: riskLevel
-                        })
-                    }]
-                }).catch(e => console.error("Kafka Publish Error:", e));
+                try {
+                    await producer.send({
+                        topic: 'fraud-alerts',
+                        messages: [{
+                            value: JSON.stringify({
+                                alertId: newAlert.id,
+                                riskScore: mlResult.riskScore,
+                                riskLevel,
+                                amount,
+                                vendor,
+                                timestamp: new Date().toISOString()
+                            })
+                        }]
+                    });
+                } catch (kafkaErr) {
+                    console.warn("Kafka send failed:", kafkaErr);
+                }
             }
 
-            // 5. Audit Log
-            await AuditLog.create({
-                id: `LOG-${Date.now()}`,
-                action: "PAYMENT_PROCESSED",
-                actor: "User",
-                target: newAlert.id,
-                details: `Processed payment of ₹${amount}. Risk: ${riskLevel} (${mlResult.riskScore})`
-            });
+            // Audit log
+            await AuditLogService.logAlert(
+                AuditEventType.ALERT_CREATED,
+                newAlert,
+                user || { id: 'system', name: 'System', role: 'system' },
+                undefined,
+                newAlert.toObject(),
+                {
+                    mlRiskScore: mlResult.riskScore,
+                    detectionReasons: mlResult.mlReasons,
+                }
+            );
 
-            // ===== FEATURE 12: EMAIL NOTIFICATIONS =====
-            // Send email for critical alerts (async, non-blocking)
+            // Email notification for critical alerts
             if (mlResult.riskScore >= 90) {
                 NotificationService.sendCriticalAlertEmail(newAlert.toObject()).catch(err =>
                     console.error('Email notification failed:', err)
                 );
             }
 
-            // Return Alert + ML Analysis Flag
             return res.json({
                 ...newAlert.toObject(),
                 isAnomaly: mlResult.isAnomaly || mlResult.riskScore >= 70
             });
 
-        } catch (error: any) {
-            console.error("Create Alert Error:", error);
-            return res.status(500).json({ error: error.message || "Internal Server Error" });
+        } catch (error) {
+            console.error('Create alert failed:', error);
+            return res.status(500).json({ error: 'Failed to create alert' });
+        }
+    }
+
+    static async updateAlertStatus(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const { status } = req.body;
+            const user = (req as any).user;
+
+            const validStatuses = ['New', 'Investigating', 'Verified', 'Dismissed', 'Closed'];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({ error: 'Invalid status' });
+            }
+
+            const alert = await Alert.findOne({ id });
+            if (!alert) {
+                return res.status(404).json({ error: 'Alert not found' });
+            }
+
+            const beforeState = { status: alert.status };
+            alert.status = status;
+            await alert.save();
+            const afterState = { status: alert.status };
+
+            // Audit log with state tracking
+            await AuditLogService.logAlert(
+                AuditEventType.ALERT_STATUS_CHANGED,
+                alert,
+                user || { id: 'system', name: 'System', role: 'system' },
+                beforeState,
+                afterState,
+                { changedAt: new Date().toISOString() }
+            );
+
+            return res.json({ message: 'Status updated', alert: alert.toObject() });
+
+        } catch (error) {
+            console.error('Update alert status failed:', error);
+            return res.status(500).json({ error: 'Failed to update status' });
+        }
+    }
+
+    static async getAlerts(req: Request, res: Response) {
+        try {
+            const alerts = await Alert.find().sort({ timestamp: -1 }).limit(100);
+            return res.json(alerts);
+        } catch (error) {
+            console.error('Get alerts failed:', error);
+            return res.status(500).json({ error: 'Failed to fetch alerts' });
         }
     }
 
@@ -175,68 +325,20 @@ export class AlertController {
                 timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }
             });
 
-            // Calculate total flagged volume
-            const allAlerts = await Alert.find();
-            const totalVolume = allAlerts.reduce((sum, alert) => sum + alert.amount, 0);
+            const alerts = await Alert.find().sort({ timestamp: -1 }).limit(10);
+            const totalVolume = await Alert.aggregate([
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]);
 
-            // Get recent high risk alerts
-            const recentHighRisk = await Alert.find({ riskScore: { $gt: 75 } })
-                .sort({ timestamp: -1 })
-                .limit(5);
-
-            // Get recent transactions (ALL)
-            const recentTransactions = await Alert.find()
-                .sort({ timestamp: -1 })
-                .limit(5);
-
-            res.json({
+            return res.json({
                 totalAlerts,
                 recentAlerts,
-                totalVolume: `₹${(totalVolume / 10000000).toFixed(2)} Cr`,
-                recentHighRisk,
-                recentTransactions
+                totalVolume: totalVolume[0]?.total ? `₹${totalVolume[0].total.toLocaleString()}` : '₹0',
+                recentTransactions: alerts
             });
-        } catch (error: any) {
-            res.status(500).json({ error: error.message });
-        }
-    }
-
-    static async getAlerts(req: Request, res: Response) {
-        try {
-            const alerts = await Alert.find().sort({ timestamp: -1 });
-            return res.json(alerts);
         } catch (error) {
-            return res.status(500).json({ error: "Failed to fetch alerts" });
-        }
-    }
-
-    static async updateAlertStatus(req: Request, res: Response) {
-        try {
-            const { id } = req.params;
-            const { status, notes } = req.body;
-
-            const alert = await Alert.findOneAndUpdate(
-                { id },
-                { status, $push: { hierarchy: { role: 'Officer', name: 'User', status, time: new Date().toISOString() } } },
-                { new: true }
-            );
-
-            if (!alert) {
-                return res.status(404).json({ error: "Alert not found" });
-            }
-
-            // Log the action
-            await AuditLog.create({
-                id: `LOG-${Date.now()}`,
-                action: "STATUS_UPDATE",
-                actor: "User",
-                target: id,
-                details: `Updated status to ${status}. Notes: ${notes || 'None'}`
-            });
-
-            return res.json(alert);
-        } catch (error) {
-            return res.status(500).json({ error: "Failed to update alert status" });
+            console.error('Get stats failed:', error);
+            return res.status(500).json({ error: 'Failed to fetch stats' });
         }
     }
 }

@@ -1,274 +1,359 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
-    ArrowLeft,
-    AlertTriangle,
-    CheckCircle,
-    Info,
-    Shield,
-    User,
-    Clock,
-    FileText,
-    MapPin
+    ArrowLeft, Clock, AlertTriangle, TrendingUp, MapPin, User,
+    DollarSign, Shield, Activity, FileText, ChevronRight, ExternalLink
 } from "lucide-react";
+import { API_ENDPOINTS, apiCall } from "@/lib/config";
+import Link from "next/link";
 
-// Types
 interface AlertDetail {
-    id: string;
-    scheme: string;
-    riskScore: number;
-    riskLevel: string;
-    amount: number;
-    beneficiary: string;
-    account: string;
-    district: string;
-    timestamp: string;
-    state: string;
-    mlReasons: string[];
-    hierarchy: { role: string; name: string; status: string; time: string }[];
+    alert: any;
+    timeline: any[];
+    relatedAlerts: any[];
+    vendorStats: any;
+    riskBreakdown: any;
+    metadata: any;
 }
 
-const timelineSteps = [
-    { label: "Initiated", status: "completed", date: "Jan 9, 10:15 AM" },
-    { label: "Partially Released", status: "current", date: "Jan 9, 10:42 AM" },
-    { label: "Corrected", status: "upcoming", date: "-" },
-    { label: "Finalized", status: "upcoming", date: "-" }
-];
-
-export default function AlertDetailPage({ params }: { params: { id: string } }) {
-    const [alertDetail, setAlertDetail] = useState<AlertDetail | null>(null);
+export default function AlertDetailPage() {
+    const params = useParams();
+    const router = useRouter();
+    const [data, setData] = useState<AlertDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [actionNote, setActionNote] = useState("");
+    const [activeTab, setActiveTab] = useState("overview");
 
     useEffect(() => {
-        async function fetchDetail() {
-            try {
-                const res = await fetch(`http://localhost:8000/alerts/${params.id}`);
-                if (!res.ok) throw new Error("Alert not found");
-                const data = await res.json();
-                setAlertDetail(data);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchDetail();
+        fetchAlertDetail();
     }, [params.id]);
 
-    if (loading) return <div className="p-10 text-center">Loading Investigation Context...</div>;
-    if (error || !alertDetail) return <div className="p-10 text-center text-red-600">Error: {error || "Alert not found"}</div>;
+    const fetchAlertDetail = async () => {
+        try {
+            setLoading(true);
+            const result = await apiCall<AlertDetail>(API_ENDPOINTS.ALERT_BY_ID(params.id as string));
+            setData(result);
+        } catch (err: any) {
+            setError(err.message || "Failed to load alert details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading alert details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !data) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="text-center">
+                    <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Alert Not Found</h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => router.push("/dashboard/alerts")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        Back to Alerts
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const { alert, timeline, relatedAlerts, vendorStats, riskBreakdown } = data;
+
+    const getRiskColor = (score: number) => {
+        if (score >= 80) return "text-red-600 bg-red-50 border-red-200";
+        if (score >= 60) return "text-orange-600 bg-orange-50 border-orange-200";
+        if (score >= 40) return "text-yellow-600 bg-yellow-50 border-yellow-200";
+        return "text-green-600 bg-green-50 border-green-200";
+    };
+
+    const getStatusColor = (status: string) => {
+        const colors: any = {
+            "New": "bg-blue-100 text-blue-800",
+            "Investigating": "bg-yellow-100 text-yellow-800",
+            "Verified": "bg-red-100 text-red-800",
+            "Dismissed": "bg-gray-100 text-gray-800",
+            "Closed": "bg-green-100 text-green-800",
+        };
+        return colors[status] || "bg-gray-100 text-gray-800";
+    };
 
     return (
-        <div className="space-y-6 pb-20">
+        <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <Link href="/dashboard/alerts" className="flex items-center text-sm text-gray-500 hover:text-gray-900">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
+            <div className="mb-6">
+                <button
+                    onClick={() => router.push("/dashboard/alerts")}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+                >
+                    <ArrowLeft className="h-4 w-4" />
                     Back to Alerts
-                </Link>
-                <div className="bg-red-50 text-red-800 text-xs px-3 py-1 rounded-full font-medium border border-red-200 flex items-center">
-                    <Shield className="h-3 w-3 mr-1" />
-                    System Generated Alert - Verify Manually
-                </div>
-            </div>
+                </button>
 
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-center space-x-3">
-                        <h1 className="text-2xl font-bold text-gray-900">{alertDetail.id}</h1>
-                        <span className="bg-red-100 text-red-800 text-sm font-bold px-2 py-0.5 rounded-sm border border-red-200">
-                            RISK SCORE: {alertDetail.riskScore}/100
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">{alert.id}</h1>
+                        <p className="text-gray-600 mt-1">Investigation Dashboard</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(alert.status)}`}>
+                            {alert.status}
+                        </span>
+                        <span className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 ${getRiskColor(alert.riskScore)}`}>
+                            Risk: {alert.riskScore}/100
                         </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Detected during <span className="font-semibold text-gray-900">{alertDetail.state}</span> phase
-                    </p>
-                </div>
-                <div className="text-right">
-                    <p className="text-sm text-gray-500">Transaction Amount</p>
-                    <p className="text-2xl font-mono font-bold text-gray-900">₹{alertDetail.amount.toLocaleString('en-IN')}</p>
                 </div>
             </div>
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Tabs */}
+            <div className="border-b border-gray-200 mb-6">
+                <nav className="flex gap-8">
+                    {["overview", "timeline", "related", "raw"].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`pb-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </nav>
+            </div>
 
-                {/* Left Col: Context */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Transaction State */}
-                    <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-200">
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-6">Transaction Lifecycle</h3>
-                        <div className="relative flex items-center justify-between">
-                            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -z-10 mt-[-10px]"></div>
-                            {timelineSteps.map((step, idx) => (
-                                <div key={idx} className="flex flex-col items-center">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 bg-white ${step.status === 'completed' ? 'border-green-500 text-green-500' :
-                                        step.status === 'current' ? 'border-blue-600 text-blue-600 ring-4 ring-blue-50' :
-                                            'border-gray-300 text-gray-300'
-                                        }`}>
-                                        {step.status === 'completed' ? <CheckCircle className="h-4 w-4" /> :
-                                            step.status === 'current' ? <div className="h-2.5 w-2.5 bg-blue-600 rounded-full" /> :
-                                                <div className="h-2.5 w-2.5 bg-gray-300 rounded-full" />}
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+                <div className="space-y-6">
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-500">Amount</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">
+                                        ₹{alert.amount.toLocaleString()}
+                                    </p>
+                                </div>
+                                <DollarSign className="h-8 w-8 text-green-600" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-500">Risk Level</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">{alert.riskLevel}</p>
+                                </div>
+                                <Shield className="h-8 w-8 text-red-600" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-500">Location</p>
+                                    <p className="text-2xl font-bold text-gray-900 mt-1">{alert.district}</p>
+                                </div>
+                                <MapPin className="h-8 w-8 text-blue-600" />
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-500">Created</p>
+                                    <p className="text-lg font-bold text-gray-900 mt-1">
+                                        {new Date(alert.timestamp).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <Clock className="h-8 w-8 text-purple-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Transaction Details */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Transaction Details
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-sm text-gray-500">Scheme</p>
+                                <p className="font-semibold text-gray-900">{alert.scheme}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Vendor</p>
+                                <p className="font-semibold text-gray-900">{alert.vendor}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Beneficiary</p>
+                                <p className="font-semibold text-gray-900">{alert.beneficiary}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Coordinates</p>
+                                <p className="font-semibold text-gray-900">
+                                    {alert.coordinates?.join(", ") || "N/A"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Risk Analysis */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5" />
+                            Risk Breakdown
+                        </h2>
+                        <div className="space-y-3">
+                            {Object.entries(riskBreakdown).map(([key, value]: [string, any]) => (
+                                <div key={key} className="flex items-center justify-between">
+                                    <span className="text-gray-700 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-48 bg-gray-200 rounded-full h-2">
+                                            <div
+                                                className="bg-blue-600 h-2 rounded-full"
+                                                style={{ width: `${Math.min((value / 100) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <span className="font-semibold text-gray-900 w-12 text-right">{value}</span>
                                     </div>
-                                    <p className={`text-xs mt-2 font-medium ${step.status === 'current' ? 'text-blue-900' : 'text-gray-500'}`}>{step.label}</p>
-                                    <p className="text-[10px] text-gray-400">{step.date}</p>
                                 </div>
                             ))}
                         </div>
-
-                        {/* XAI: Explainable AI Section */}
-                        <div className="mt-8 border-t border-gray-100 pt-6">
-                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center">
-                                <div className="h-2 w-2 bg-purple-500 rounded-full mr-2"></div>
-                                AI Model Explanation (SHAP Values)
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center text-xs">
-                                    <span className="w-32 text-gray-500">Transaction Amount</span>
-                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
-                                        <div className="h-full bg-red-500" style={{ width: '85%' }}></div>
-                                    </div>
-                                    <span className="w-12 text-right font-mono text-red-600">+85%</span>
-                                </div>
-                                <div className="flex items-center text-xs">
-                                    <span className="w-32 text-gray-500">Agency Deviance</span>
-                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
-                                        <div className="h-full bg-orange-500" style={{ width: '45%' }}></div>
-                                    </div>
-                                    <span className="w-12 text-right font-mono text-orange-600">+45%</span>
-                                </div>
-                                <div className="flex items-center text-xs">
-                                    <span className="w-32 text-gray-500">Benford's Law</span>
-                                    <div className="flex-1 h-2 bg-gray-100 rounded-full mx-2 overflow-hidden">
-                                        <div className="h-full bg-blue-500" style={{ width: '15%' }}></div>
-                                    </div>
-                                    <span className="w-12 text-right font-mono text-blue-600">+15%</span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-2 italic">*Positive values indicate contribution towards "Fraud" classification.</p>
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                                <button
-                                    onClick={() => alert("Feedback Recorded: This transaction will be used to retrain the model tonight.")}
-                                    className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center"
-                                >
-                                    Is this a False Positive? Report to AI Team
-                                </button>
-                            </div>
-                        </div>
                     </div>
 
-                    {/* ML Insights */}
-                    <div className="bg-white p-6 rounded-sm shadow-sm border-l-4 border-l-red-500 border-y border-r border-gray-200">
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 flex items-center">
-                            <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
-                            Risk Factors & Anomaly Detection
-                        </h3>
-                        <ul className="space-y-3">
-                            {alertDetail.mlReasons.map((reason, idx) => (
-                                <li key={idx} className="flex items-start text-sm text-gray-800 bg-red-50 p-3 rounded-sm border border-red-100">
-                                    <Info className="h-4 w-4 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-                                    {reason}
+                    {/* Detection Reasons */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            Detection Reasons
+                        </h2>
+                        <ul className="space-y-2">
+                            {alert.mlReasons?.map((reason: string, idx: number) => (
+                                <li key={idx} className="flex items-start gap-2">
+                                    <ChevronRight className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <span className="text-gray-700">{reason}</span>
                                 </li>
                             ))}
                         </ul>
-                        <p className="text-xs text-gray-500 mt-4 italic border-t pt-2">
-                            * Confidence scores are derived from Ensemble Models (Isolation Forest + LSTM).
-                        </p>
                     </div>
 
-                    {/* Entity Details */}
-                    <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                            <h3 className="text-sm font-bold text-gray-700">Entity & Scheme Context</h3>
-                        </div>
-                        <div className="p-6 grid grid-cols-2 gap-6">
+                    {/* Vendor Statistics */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            Vendor Statistics
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                                <p className="text-xs text-gray-500 uppercase">Beneficiary</p>
-                                <div className="flex items-center mt-1">
-                                    <User className="h-4 w-4 text-gray-400 mr-2" />
-                                    <p className="text-sm font-medium text-gray-900">{alertDetail.beneficiary}</p>
-                                </div>
+                                <p className="text-sm text-gray-500">Total Alerts</p>
+                                <p className="text-2xl font-bold text-gray-900">{vendorStats.totalAlerts}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 uppercase">Scheme</p>
-                                <div className="flex items-center mt-1">
-                                    <FileText className="h-4 w-4 text-gray-400 mr-2" />
-                                    <p className="text-sm font-medium text-gray-900">{alertDetail.scheme}</p>
-                                </div>
+                                <p className="text-sm text-gray-500">Avg Risk Score</p>
+                                <p className="text-2xl font-bold text-gray-900">{vendorStats.averageRiskScore.toFixed(1)}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 uppercase">Region</p>
-                                <div className="flex items-center mt-1">
-                                    <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                                    <p className="text-sm font-medium text-gray-900">{alertDetail.district}</p>
-                                </div>
+                                <p className="text-sm text-gray-500">High Risk Count</p>
+                                <p className="text-2xl font-bold text-red-600">{vendorStats.highRiskCount}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 uppercase">Account</p>
-                                <p className="text-sm font-medium text-gray-900 mt-1">{alertDetail.account}</p>
+                                <p className="text-sm text-gray-500">Total Volume</p>
+                                <p className="text-2xl font-bold text-gray-900">₹{(vendorStats.totalVolume / 100000).toFixed(1)}L</p>
                             </div>
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* Right Col: Action & History */}
-                <div className="space-y-6">
-                    {/* Action Panel */}
-                    <div className="bg-blue-50 p-6 rounded-sm shadow-sm border border-blue-100">
-                        <h3 className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-4">Officer Actions</h3>
-                        <div className="space-y-4">
-                            <button className="w-full py-2 bg-white border border-blue-200 text-blue-800 text-sm font-medium rounded-sm shadow-sm hover:bg-blue-50 flex items-center justify-center">
-                                <FileText className="h-4 w-4 mr-2" /> View Detailed Audit Log
-                            </button>
-                            <div className="border-t border-blue-200 pt-4">
-                                <label className="text-xs font-medium text-blue-800 mb-2 block">Add Case Note (Mandatory for Override)</label>
-                                <textarea
-                                    className="w-full text-sm p-2 border border-blue-200 rounded-sm focus:ring-2 focus:ring-blue-500"
-                                    rows={3}
-                                    placeholder="Enter justification..."
-                                    value={actionNote}
-                                    onChange={(e) => setActionNote(e.target.value)}
-                                ></textarea>
+            {/* Timeline Tab */}
+            {activeTab === "timeline" && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Activity Timeline</h2>
+                    <div className="space-y-4">
+                        {timeline.map((event, idx) => (
+                            <div key={event.id} className="flex gap-4">
+                                <div className="flex flex-col items-center">
+                                    <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                                    {idx < timeline.length - 1 && <div className="w-0.5 h-full bg-gray-300 mt-1"></div>}
+                                </div>
+                                <div className="flex-1 pb-8">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="font-semibold text-gray-900">{event.eventType}</p>
+                                        <p className="text-sm text-gray-500">
+                                            {new Date(event.timestamp).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <p className="text-gray-700">{event.action}</p>
+                                    <p className="text-sm text-gray-500 mt-1">by {event.actor}</p>
+                                </div>
                             </div>
-                            <div className="flex space-x-2">
-                                <button className="flex-1 py-2 bg-red-600 text-white text-sm font-medium rounded-sm hover:bg-red-700 shadow-sm">
-                                    Escalate
-                                </button>
-                                <button className="flex-1 py-2 bg-green-600 text-white text-sm font-medium rounded-sm hover:bg-green-700 shadow-sm">
-                                    Validate
-                                </button>
-                            </div>
-                        </div>
+                        ))}
                     </div>
+                </div>
+            )}
 
-                    {/* Hierarchy */}
-                    <div className="bg-white p-6 rounded-sm shadow-sm border border-gray-200">
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4">Approval Hierarchy</h3>
-                        <div className="relative border-l-2 border-gray-200 ml-3 space-y-6">
-                            {alertDetail.hierarchy.map((h, idx) => (
-                                <div key={idx} className="ml-6 relative">
-                                    <div className={`absolute -left-[31px] top-0 h-4 w-4 rounded-full border-2 border-white ${h.status === 'Approved' ? 'bg-green-500' : 'bg-gray-300'
-                                        }`}></div>
-                                    <p className="text-xs font-medium text-gray-500">{h.role}</p>
-                                    <p className="text-sm font-medium text-gray-900">{h.name}</p>
-                                    <div className="flex items-center text-xs text-gray-400 mt-1">
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        {h.time}
+            {/* Related Alerts Tab */}
+            {activeTab === "related" && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Related Alerts</h2>
+                    <div className="space-y-3">
+                        {relatedAlerts.map((related) => (
+                            <Link
+                                key={related.id}
+                                href={`/dashboard/alerts/${related.id}`}
+                                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-2 h-2 rounded-full ${related.riskScore > 70 ? 'bg-red-600' : 'bg-yellow-600'}`}></div>
+                                    <div>
+                                        <p className="font-semibold text-gray-900">{related.id}</p>
+                                        <p className="text-sm text-gray-500">
+                                            {new Date(related.timestamp).toLocaleDateString()}
+                                        </p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm font-semibold text-gray-900">
+                                        ₹{related.amount.toLocaleString()}
+                                    </span>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(related.status)}`}>
+                                        {related.status}
+                                    </span>
+                                    <ExternalLink className="h-4 w-4 text-gray-400" />
+                                </div>
+                            </Link>
+                        ))}
                     </div>
                 </div>
-            </div>
+            )}
 
-            <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 p-4 text-center text-xs text-gray-500">
-                DISCLAIMER: This system provides decision support only. Final responsibility remains with the officer.
-            </div>
+            {/* Raw Data Tab */}
+            {activeTab === "raw" && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Raw Data</h2>
+                    <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
+                        {JSON.stringify(data, null, 2)}
+                    </pre>
+                </div>
+            )}
         </div>
     );
 }

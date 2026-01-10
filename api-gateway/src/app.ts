@@ -8,6 +8,7 @@ import resourceRoutes from './routes/resource.routes';
 import authRoutes from './routes/auth.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import { Scheme, Vendor, AuditLog } from './models';
+import { auditMiddleware } from './services/audit.service';
 
 const app = express();
 
@@ -21,6 +22,9 @@ app.use(cors({
 }));
 app.use(morgan('dev'));
 app.use(express.json());
+
+// Audit logging middleware (after body parser)
+app.use(auditMiddleware);
 
 // Routes
 app.use('/auth', authRoutes);

@@ -1,5 +1,6 @@
-// Centralized API configuration
+// Centralized API configuration with environment variable support
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+export const ML_SERVICE_URL = process.env.NEXT_PUBLIC_ML_URL || 'http://localhost:8000';
 
 export const API_ENDPOINTS = {
     // Auth
@@ -23,12 +24,38 @@ export const API_ENDPOINTS = {
     VENDOR_BY_ID: (id: string) => `${API_BASE_URL}/vendors/${id}`,
     VENDOR_RISK_PROFILE: (id: string) => `${API_BASE_URL}/vendors/${id}/risk-profile`,
 
+    // Schemes
+    SCHEMES: `${API_BASE_URL}/schemes`,
+
     // Network
     NETWORK: (id: string) => `${API_BASE_URL}/network/${id}`,
 
     // Audit
     AUDIT_LOGS: `${API_BASE_URL}/audit-logs`,
-
-    // Schemes
-    SCHEMES: `${API_BASE_URL}/schemes`,
 };
+
+// Helper function for API calls with proper error handling
+export async function apiCall<T>(
+    endpoint: string,
+    options?: RequestInit
+): Promise<T> {
+    try {
+        const response = await fetch(endpoint, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options?.headers,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(error.error || `HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('API call failed:', endpoint, error);
+        throw error;
+    }
+}
