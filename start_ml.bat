@@ -1,4 +1,4 @@
 @echo off
-echo Starting ML Service...
+echo Starting ML Service (ml_model.py)...
 cd ml-service
-python service.py
+python ml_model.py
