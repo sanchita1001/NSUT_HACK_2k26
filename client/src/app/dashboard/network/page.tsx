@@ -17,6 +17,43 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 import api from "@/lib/api";
 import { Vendor } from "@fds/common";
 
+import { Handle, Position } from 'reactflow';
+
+const CustomNode = ({ data }: { data: any }) => {
+    return (
+        <div className="relative group">
+            <div className="px-4 py-2 shadow-md rounded-md bg-white border-2 border-stone-400">
+                <div className="flex items-center">
+                    <div className="ml-2">
+                        <div className="text-sm font-bold text-gray-900">{data.label}</div>
+                        {data.riskScore !== undefined && (
+                            <div className="text-xs text-gray-500">Risk: {data.riskScore}/100</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <Handle type="target" position={Position.Top} className="w-16 !bg-teal-500" />
+            <Handle type="source" position={Position.Bottom} className="w-16 !bg-teal-500" />
+
+            {/* Tooltip */}
+            <div className="absolute hidden group-hover:block z-50 w-64 p-3 mt-2 text-sm text-left text-white bg-gray-900 rounded-lg shadow-xl -left-1/2 ml-16">
+                <p className="font-semibold border-b border-gray-700 pb-1 mb-1">{data.label}</p>
+                <p>Risk Score: {data.riskScore}</p>
+                {data.sharedSchemes && (
+                    <div className="mt-2 text-xs text-gray-300">
+                        <p className="font-semibold text-gray-100 mb-1">Shared Schemes:</p>
+                        {data.sharedSchemes}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const nodeTypes = {
+    custom: CustomNode,
+};
+
 export default function NetworkPage() {
     const searchParams = useSearchParams();
     const entityId = searchParams.get('entityId') || 'VEN-991';
@@ -36,7 +73,15 @@ export default function NetworkPage() {
         try {
             const res = await api.get(`/network/${entityId}`);
             const data = res.data;
-            setNodes(data.nodes);
+
+            // Map nodes to use custom type
+            const enhancedNodes = data.nodes.map((n: any) => ({
+                ...n,
+                type: 'custom', // Force custom node type
+                data: { ...n.data }
+            }));
+
+            setNodes(enhancedNodes);
             setEdges(data.edges);
         } catch (e) {
             console.error("Graph fetch failed", e);
@@ -47,16 +92,22 @@ export default function NetworkPage() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000);
+        const interval = setInterval(fetchData, 10000); // 10s refresh for live updates
         return () => clearInterval(interval);
     }, [entityId]);
 
     const handleVendorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const vendorId = e.target.value;
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('entityId', vendorId);
-        window.history.pushState(null, '', `?${params.toString()}`);
-        // Force re-render/fetch logic might be handled by URL/Effect, but let's be safe
+        // Update URL without full reload
+        const url = new URL(window.location.href);
+        url.searchParams.set('entityId', vendorId);
+        window.history.pushState({}, '', url);
+        // Force manual fetch since pushState doesn't trigger effect dependency on searchParams result directly if we used useSearchParams hook result which is static in some versions, 
+        // but here we used entityId derived from searchParams. 
+        // Actually, to make it clean, let's just use window location reload or navigation
+        // But let's stick to the existing pattern or improve it.
+        // The simplest way:
+        window.location.href = `?entityId=${vendorId}`;
     };
 
     return (
@@ -84,7 +135,7 @@ export default function NetworkPage() {
                     </button>
                     <div className="flex items-center space-x-2 text-sm text-orange-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
                         <AlertCircle className="h-4 w-4" />
-                        <span> AI Engine: Collusion Detected</span>
+                        <span> AI Engine: Real-time Collusion Detection</span>
                     </div>
                 </div>
             </div>
@@ -95,6 +146,7 @@ export default function NetworkPage() {
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onEdgesChange={onEdgesState}
+                    nodeTypes={nodeTypes}
                     fitView
                 >
                     <Background color="#f1f5f9" gap={16} />
