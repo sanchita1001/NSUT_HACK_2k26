@@ -4,7 +4,7 @@ Ollama Integration for Vendor/Agency Profile Generation
 Uses Ollama llama3:8b for AI-generated fraud analysis summaries
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 class SummaryGenerator:

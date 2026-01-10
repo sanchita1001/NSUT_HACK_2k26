@@ -37,4 +37,46 @@ export class MLService {
             };
         }
     }
+
+    static async generateVendorProfile(
+        data: { amount: number; agency: string; vendor: string; transaction_time?: string },
+        vendorContext?: {
+            totalTransactions: number;
+            averageAmount: number;
+            totalVolume: number;
+            highRiskCount: number;
+            averageRiskScore: number;
+            recentTransactions: any[];
+        }
+    ) {
+        try {
+            console.log(`[ML Service] Generating vendor profile for ${data.vendor}/${data.agency}`);
+            const response = await axios.post(`${this.ML_URL}/generate-profile`, {
+                amount: data.amount,
+                agency: data.agency,
+                vendor: data.vendor,
+                transaction_time: data.transaction_time,
+                vendor_context: vendorContext
+            }, { timeout: 10000 }); // 10s timeout for LLM generation
+
+            return response.data;
+        } catch (error: any) {
+            console.error("[ML Service] Profile Generation Failed:", error.message);
+            throw new Error("Failed to generate vendor profile");
+        }
+    }
+
+    static async getVendorHistory(vendor: string) {
+        try {
+            console.log(`[ML Service] Fetching vendor history for ${vendor} from JSONL`);
+            const response = await axios.get(`${this.ML_URL}/vendor-history/${encodeURIComponent(vendor)}`, {
+                timeout: 5000
+            });
+
+            return response.data;
+        } catch (error: any) {
+            console.error("[ML Service] Vendor History Failed:", error.message);
+            throw new Error("Failed to fetch vendor history");
+        }
+    }
 }
