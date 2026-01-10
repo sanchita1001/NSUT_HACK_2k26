@@ -159,7 +159,7 @@ export default function SchemesPage() {
 
                             <div className="border-t border-gray-100 pt-4 mt-4">
                                 <div className="flex justify-between items-center mb-2">
-                                    <p className="text-xs text-gray-400 uppercase">Budget Allocated</p>
+                                    <p className="text-xs text-gray-800 uppercase">Budget Allocated</p>
                                     <p className="text-xs text-gray-500">{(scheme as any).usageCount || 0} alerts</p>
                                 </div>
                                 <p className="text-lg font-mono font-medium text-gray-900">₹{(scheme.budgetAllocated / 10000000).toFixed(1)} Cr</p>

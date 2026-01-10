@@ -17,14 +17,14 @@ export class NetworkController {
             const alerts = await Alert.find().lean();
 
             // 1. Identify Schemes the target vendor is involved in
-            const targetVendorAlerts = alerts.filter(a => (a as any).vendor === targetVendor.name);
+            const targetVendorAlerts = alerts.filter(a => a.vendor === targetVendor.name);
             const targetSchemes = new Set(targetVendorAlerts.map(a => a.scheme));
 
             // 2. Find other vendors in the same schemes (Collusion Risk)
             const relatedVendorsMap = new Map<string, Set<string>>(); // VendorName -> Set of Shared Schemes
 
             alerts.forEach(alert => {
-                const alertVendor = (alert as any).vendor;
+                const alertVendor = alert.vendor;
                 if (alertVendor !== targetVendor.name && targetSchemes.has(alert.scheme)) {
                     if (!relatedVendorsMap.has(alertVendor)) {
                         relatedVendorsMap.set(alertVendor, new Set());

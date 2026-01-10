@@ -76,7 +76,7 @@ export default function VendorsPage() {
                         Register Vendor
                     </button>
                     <div className="relative">
-                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                        <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-800" />
                         <input type="text" placeholder="Search Vendor Name / GSTIN" className="pl-10 pr-4 py-2 border border-gray-300 rounded-sm w-64 text-sm focus:outline-none focus:border-blue-500" />
                     </div>
                 </div>
@@ -161,7 +161,7 @@ export default function VendorsPage() {
                             <tr key={v.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
-                                        <Building2 className="h-4 w-4 text-gray-400 mr-3" />
+                                        <Building2 className="h-4 w-4 text-gray-800 mr-3" />
                                         <span className="text-sm font-medium text-gray-900">{v.name}</span>
                                     </div>
                                 </td>

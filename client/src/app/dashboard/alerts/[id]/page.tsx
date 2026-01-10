@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     ArrowLeft, Clock, AlertTriangle, TrendingUp, MapPin, User,
-    DollarSign, Shield, Activity, FileText, ChevronRight, ExternalLink,
+    IndianRupee, Shield, Activity, FileText, ChevronRight, ExternalLink,
     Sparkles, Loader2, BarChart3, PieChart, TrendingDown
 } from "lucide-react";
 import { API_ENDPOINTS, apiCall } from "@/lib/config";
@@ -198,7 +198,7 @@ export default function AlertDetailPage() {
                                         ₹{alert.amount.toLocaleString('en-IN')}
                                     </p>
                                 </div>
-                                <DollarSign className="h-8 w-8 text-green-600" />
+                                <IndianRupee className="h-8 w-8 text-green-600" />
                             </div>
                         </div>
 
@@ -280,7 +280,14 @@ export default function AlertDetailPage() {
                                     <p className="text-sm text-gray-600 mt-1">High Risk</p>
                                 </div>
                                 <div className="text-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                                    <p className="text-3xl font-bold text-green-600">₹{(vendorStats.totalVolume / 100000).toFixed(1)}L</p>
+                                    <p className="text-3xl font-bold text-green-600">
+                                        {(() => {
+                                            const val = vendorStats.totalVolume;
+                                            if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
+                                            if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`;
+                                            return `₹${val.toLocaleString('en-IN')}`;
+                                        })()}
+                                    </p>
                                     <p className="text-sm text-gray-600 mt-1">Total Volume</p>
                                 </div>
                             </div>
@@ -347,7 +354,7 @@ export default function AlertDetailPage() {
                             <button
                                 onClick={generateAISummary}
                                 disabled={generatingSummary}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 mx-auto"
+                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-800 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 mx-auto"
                             >
                                 {generatingSummary ? (
                                     <>
@@ -500,7 +507,7 @@ export default function AlertDetailPage() {
                                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(related.status)}`}>
                                         {related.status}
                                     </span>
-                                    <ExternalLink className="h-4 w-4 text-gray-400" />
+                                    <ExternalLink className="h-4 w-4 text-gray-800" />
                                 </div>
                             </Link>
                         ))}

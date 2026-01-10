@@ -22,6 +22,7 @@ const VendorSchema = new mongoose.Schema({
 const AlertSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     scheme: String,
+    vendor: String, // Ensure this exists for aggregation
     riskScore: Number,
     amount: Number,
     status: String,
@@ -70,6 +71,7 @@ export interface IVendor extends mongoose.Document {
 export interface IAlert extends mongoose.Document {
     id: string;
     scheme: string;
+    vendor: string;
     riskScore: number;
     amount: number;
     status: string;

@@ -53,25 +53,54 @@ export class AlertController {
                 id: { $ne: id } // Exclude current alert
             }).limit(10).sort({ timestamp: -1 });
 
-            // Get vendor history
-            const vendorAlerts = await Alert.find({
+            // Get vendor history statistics via Aggregation for accuracy and performance
+            const statsAggregation = await Alert.aggregate([
+                {
+                    $match: {
+                        vendor: alert.vendor,
+                        amount: { $lt: 1e15 } // Filter out unrealistic test data outliers
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAlerts: { $sum: 1 },
+                        averageRiskScore: { $avg: "$riskScore" },
+                        highRiskCount: {
+                            $sum: { $cond: [{ $gt: ["$riskScore", 70] }, 1, 0] }
+                        },
+                        totalVolume: { $sum: "$amount" }
+                    }
+                }
+            ]);
+
+            const aggregatedStats = statsAggregation[0] || {
+                totalAlerts: 0,
+                averageRiskScore: 0,
+                highRiskCount: 0,
+                totalVolume: 0
+            };
+
+            const stats = {
+                context: 'Vendor',
+                totalAlerts: aggregatedStats.totalAlerts,
+                averageRiskScore: aggregatedStats.averageRiskScore || 0,
+                highRiskCount: aggregatedStats.highRiskCount,
+                totalVolume: aggregatedStats.totalVolume,
+            };
+
+            // Get historical alerts for timeline/frequency (limit to recent/relevant if needed, but keeping existing logic)
+            const historicalAlerts = await Alert.find({
                 vendor: alert.vendor
             }).sort({ timestamp: -1 });
-
-            const vendorStats = {
-                totalAlerts: vendorAlerts.length,
-                averageRiskScore: vendorAlerts.reduce((sum, a) => sum + a.riskScore, 0) / vendorAlerts.length || 0,
-                highRiskCount: vendorAlerts.filter(a => a.riskScore > 70).length,
-                totalVolume: vendorAlerts.reduce((sum, a) => sum + a.amount, 0),
-            };
 
             // Calculate risk score breakdown
             const riskBreakdown = {
                 baseScore: alert.riskScore,
                 mlScore: alert.riskScore,
-                vendorHistory: vendorStats.averageRiskScore > 60 ? 20 : 0,
+                vendorHistory: stats.averageRiskScore > 60 ? 20 : 0,
                 amountAnomaly: alert.amount > 1000000 ? 15 : 0,
-                frequencyAnomaly: vendorAlerts.filter(a => {
+                frequencyAnomaly: historicalAlerts.filter(a => {
                     const alertTime = new Date(a.timestamp).getTime();
                     const currentTime = new Date(alert.timestamp).getTime();
                     return Math.abs(alertTime - currentTime) < 24 * 60 * 60 * 1000;
@@ -106,7 +135,7 @@ export class AlertController {
                     status: a.status,
                     timestamp: a.timestamp,
                 })),
-                vendorStats,
+                vendorStats: stats,
                 riskBreakdown,
                 metadata: {
                     viewedAt: new Date().toISOString(),

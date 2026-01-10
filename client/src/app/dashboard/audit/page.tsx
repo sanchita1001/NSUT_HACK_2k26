@@ -64,9 +64,9 @@ export default function AuditPage() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between">
                                             <p className="text-sm font-medium text-gray-900">
-                                                {log.action} <span className="text-gray-400 font-normal">on</span> <span className="font-mono text-gray-700">{log.target}</span>
+                                                {log.action} <span className="text-gray-800 font-normal">on</span> <span className="font-mono text-gray-700">{log.target}</span>
                                             </p>
-                                            <span className="text-xs text-gray-400 font-mono">
+                                            <span className="text-xs text-gray-800 font-mono">
                                                 {new Date(log.timestamp).toLocaleString()}
                                             </span>
                                         </div>
@@ -75,7 +75,7 @@ export default function AuditPage() {
                                             <User className="h-3 w-3 mr-1" />
                                             {log.actor}
                                             <span className="mx-2 text-gray-300">|</span>
-                                            <span className="font-mono text-gray-400">ID: {log.id}</span>
+                                            <span className="font-mono text-gray-800">ID: {log.id}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -83,7 +83,7 @@ export default function AuditPage() {
                         ))}
                     </ul>
 
-                    {loading && <div className="p-10 text-center text-gray-400">Verifying signatures...</div>}
+                    {loading && <div className="p-10 text-center text-gray-800">Verifying signatures...</div>}
                 </div>
             </div>
         </div>
