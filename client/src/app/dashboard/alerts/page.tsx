@@ -35,7 +35,12 @@ export default function AlertsPage() {
                 setLoading(false);
             }
         }
-        fetchAlerts();
+    };
+
+    useEffect(() => {
+        fetchAlerts(true);
+        const interval = setInterval(() => fetchAlerts(false), 3000);
+        return () => clearInterval(interval);
     }, []);
 
     const filteredAlerts = filterStatus === "All"
