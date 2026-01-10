@@ -27,14 +27,26 @@ export class SchemeController {
             const { id } = req.params;
             const updates = req.body;
 
+            // Find original scheme first to check for name change
+            const originalScheme = await Scheme.findOne({ id });
+            if (!originalScheme) {
+                return res.status(404).json({ error: 'Scheme not found' });
+            }
+
             const scheme = await Scheme.findOneAndUpdate(
                 { id },
                 updates,
                 { new: true, runValidators: true }
             );
 
-            if (!scheme) {
-                return res.status(404).json({ error: 'Scheme not found' });
+            // Check if name changed and propagate to Alerts
+            if (updates.name && originalScheme.name !== updates.name) {
+                const { Alert } = require('../models');
+                const updateResult = await Alert.updateMany(
+                    { scheme: originalScheme.name },
+                    { $set: { scheme: updates.name } }
+                );
+                console.log(`Propagated scheme name change: ${originalScheme.name} -> ${updates.name} (${updateResult.modifiedCount} alerts updated)`);
             }
 
             res.json(scheme);

@@ -19,9 +19,18 @@ import { Vendor } from "@fds/common";
 
 import { Handle, Position } from 'reactflow';
 
+import { useRouter } from 'next/navigation';
+
 const CustomNode = ({ data }: { data: any }) => {
+    const router = useRouter(); // Use within component if possible, but CustomNode is outside context usually? 
+    // ReactFlow nodes are rendered inside ReactFlow provider. Let's pass click handler or simple linkage.
+    // Actually, simple href link or onClick is easier.
+
     return (
-        <div className="relative group">
+        <div
+            className="relative group cursor-pointer transition-transform hover:scale-105"
+            onClick={() => window.location.href = `/dashboard/vendors/${data.id || 'VEN-001'}`}
+        >
             <div className="px-4 py-2 shadow-md rounded-md bg-white border-2 border-stone-400">
                 <div className="flex items-center">
                     <div className="ml-2">
@@ -36,19 +45,32 @@ const CustomNode = ({ data }: { data: any }) => {
             <Handle type="source" position={Position.Bottom} className="w-16 !bg-teal-500" />
 
             {/* Tooltip */}
-            <div className="absolute hidden group-hover:block z-50 w-64 p-3 mt-2 text-sm text-left text-white bg-gray-900 rounded-lg shadow-xl -left-1/2 ml-16">
+            <div className="absolute hidden group-hover:block z-50 w-72 p-3 mt-2 text-sm text-left text-white bg-gray-900 rounded-lg shadow-xl -left-1/2 ml-16 ring-1 ring-white/20">
                 <p className="font-semibold border-b border-gray-700 pb-1 mb-1">{data.label}</p>
-                <p>Risk Score: {data.riskScore}</p>
-                {data.sharedSchemes && (
-                    <div className="mt-2 text-xs text-gray-300">
-                        <p className="font-semibold text-gray-100 mb-1">Shared Schemes:</p>
-                        {data.sharedSchemes}
-                    </div>
-                )}
+                <div className="space-y-2 mt-2">
+                    <p>Risk Score: <span className={data.riskScore > 70 ? "text-red-400 font-bold" : "text-green-400"}>{data.riskScore}</span></p>
+
+                    {data.sharedBeneficiaries && data.sharedBeneficiaries.length > 0 && (
+                        <div className="text-xs bg-red-900/30 p-2 rounded border border-red-900/50">
+                            <p className="font-bold text-red-300 mb-1">⚠️ Shared Beneficiaries:</p>
+                            <p className="text-gray-300 break-words">{data.sharedBeneficiaries}</p>
+                        </div>
+                    )}
+
+                    {data.sharedSchemes && (
+                        <div className="text-xs">
+                            <p className="font-semibold text-gray-400 mb-1">Shared Schemes:</p>
+                            <p className="text-gray-300">{data.sharedSchemes}</p>
+                        </div>
+                    )}
+                    <p className="text-[10px] text-blue-300 mt-2 text-center italic">Click to view full vendor profile</p>
+                </div>
             </div>
         </div>
     );
 };
+
+
 
 const nodeTypes = {
     custom: CustomNode,
@@ -115,51 +137,118 @@ export default function NetworkPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Entity Link Analysis</h1>
-                    <div className="flex items-center gap-4 mt-2">
+                    <p className="text-sm text-gray-500 mt-1">
+                        Visualize hidden connections between vendors.
+                        <span className="font-semibold text-blue-600 ml-1">Nodes</span> = Vendors,
+                        <span className="font-semibold text-gray-500 ml-1">Edges</span> = Shared Schemes.
+                    </p>
+                    <div className="flex items-center gap-4 mt-4">
                         <select
-                            className="text-sm px-3 py-1 border rounded text-gray-900 bg-white"
+                            className="text-sm px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
                             value={entityId}
                             onChange={handleVendorChange}
                         >
-                            <option value="">Select Vendor...</option>
+                            <option value="">Select Vendor to Analyze...</option>
                             {vendors.map(v => (
                                 <option key={v.id} value={v.id}>{v.name} ({v.id})</option>
                             ))}
                         </select>
-                        <p className="text-sm text-gray-500">Visualizing: <span className="font-mono font-bold text-blue-600">{entityId}</span></p>
+                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded border border-blue-200">
+                            Selected: {entityId}
+                        </span>
                     </div>
                 </div>
                 <div className="flex space-x-3">
-                    <button onClick={fetchData} className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-50">
+                    <button onClick={fetchData} className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-600">
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <div className="flex items-center space-x-2 text-sm text-orange-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
-                        <AlertCircle className="h-4 w-4" />
-                        <span> AI Engine: Real-time Collusion Detection</span>
-                    </div>
                 </div>
             </div>
 
-            <div className="flex-1 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden relative">
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesState}
-                    nodeTypes={nodeTypes}
-                    fitView
-                >
-                    <Background color="#f1f5f9" gap={16} />
-                    <Controls />
-                </ReactFlow>
-                {loading && (
-                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-                        <div className="flex flex-col items-center">
-                            <RefreshCw className="h-8 w-8 text-blue-600 animate-spin mb-2" />
-                            <p className="text-sm font-semibold text-blue-900">Tracing funds...</p>
+            <div className="flex gap-4 h-full">
+                {/* Main Graph Area */}
+                <div className="flex-1 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden relative">
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesState}
+                        nodeTypes={nodeTypes}
+                        fitView
+                    >
+                        <Background color="#f1f5f9" gap={16} />
+                        <Controls />
+                    </ReactFlow>
+                    {loading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 backdrop-blur-sm">
+                            <div className="flex flex-col items-center">
+                                <RefreshCw className="h-8 w-8 text-blue-600 animate-spin mb-2" />
+                                <p className="text-sm font-semibold text-blue-900">Tracing relationships...</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Legend & Guide Sidebar */}
+                <div className="w-80 bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex flex-col gap-6 h-auto overflow-y-auto">
+
+                    {/* Legend */}
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Graph Legend</h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded bg-white border-2 border-red-500 shadow-sm flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-gray-900">V1</span>
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                    <p className="font-semibold text-gray-900">High Risk Vendor</p>
+                                    Risk Score &gt; 80
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded bg-white border-2 border-green-500 shadow-sm flex items-center justify-center">
+                                    <span className="text-[10px] font-bold text-gray-900">V2</span>
+                                </div>
+                                <div className="text-xs text-gray-600">
+                                    <p className="font-semibold text-gray-900">Safe Vendor</p>
+                                    Risk Score &lt; 50
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-0.5 bg-red-600"></div>
+                                <div className="text-xs text-gray-600">
+                                    <p className="font-semibold text-gray-900">Suspicious Link</p>
+                                    Shared Beneficiary (Collusion)
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-0.5 bg-gray-400"></div>
+                                <div className="text-xs text-gray-600">
+                                    <p className="font-semibold text-gray-900">Standard Link</p>
+                                    Shared Scheme
+                                </div>
+                            </div>
                         </div>
                     </div>
-                )}
+
+                    {/* How to use */}
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Understanding the Graph</h3>
+                        <div className="space-y-3 text-xs text-gray-600 leading-relaxed">
+                            <p>
+                                <span className="font-semibold text-blue-600">Collusion Detection:</span>
+                                Clusters of vendors connected by many lines suggest they are bidding on the same schemes frequently.
+                            </p>
+                            <p>
+                                <span className="font-semibold text-red-600">Risk Contagion:</span>
+                                If a Safe Vendor (Green) is heavily connected to High Risk Vendors (Red), they should be investigated.
+                            </p>
+                            <p className="italic bg-gray-50 p-2 rounded border border-gray-100">
+                                "Tip: Hover over any node to see specific shared schemes and risk details."
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

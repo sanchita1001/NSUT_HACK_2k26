@@ -16,7 +16,10 @@ const VendorSchema = new mongoose.Schema({
     riskScore: Number,
     totalVolume: Number,
     flaggedTransactions: Number,
-    accountStatus: String // 'ACTIVE' | 'FROZEN' | 'UNDER_WATCH'
+    flaggedTransactions: Number,
+    accountStatus: String, // 'ACTIVE' | 'FROZEN' | 'UNDER_WATCH'
+    latitude: Number,
+    longitude: Number
 });
 
 const AlertSchema = new mongoose.Schema({
@@ -66,6 +69,8 @@ export interface IVendor extends mongoose.Document {
     totalVolume: number;
     flaggedTransactions: number;
     accountStatus: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface IAlert extends mongoose.Document {

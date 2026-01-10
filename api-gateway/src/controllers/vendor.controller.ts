@@ -86,7 +86,7 @@ export class VendorController {
 
     static async createVendor(req: Request, res: Response) {
         try {
-            const { id, name, pan, address, riskScore, status } = req.body;
+            const { id, name, pan, address, riskScore, status, latitude, longitude } = req.body;
 
             const vendor = await Vendor.create({
                 id,
@@ -94,7 +94,9 @@ export class VendorController {
                 pan,
                 address,
                 riskScore: riskScore || 0,
-                status: status || 'ACTIVE'
+                status: status || 'ACTIVE',
+                latitude,
+                longitude
             });
 
             res.status(201).json(vendor);
@@ -109,14 +111,27 @@ export class VendorController {
             const { id } = req.params;
             const updates = req.body;
 
+            // Find original vendor first to check for name change
+            const originalVendor = await Vendor.findOne({ id });
+            if (!originalVendor) {
+                return res.status(404).json({ error: 'Vendor not found' });
+            }
+
+            // Perform Update
             const vendor = await Vendor.findOneAndUpdate(
                 { id },
                 updates,
                 { new: true, runValidators: true }
             );
 
-            if (!vendor) {
-                return res.status(404).json({ error: 'Vendor not found' });
+            // Check if name changed and propagate to Alerts
+            if (updates.name && originalVendor.name !== updates.name) {
+                const { Alert } = require('../models');
+                const updateResult = await Alert.updateMany(
+                    { vendor: originalVendor.name },
+                    { $set: { vendor: updates.name } }
+                );
+                console.log(`Propagated vendor name change: ${originalVendor.name} -> ${updates.name} (${updateResult.modifiedCount} alerts updated)`);
             }
 
             res.json(vendor);
