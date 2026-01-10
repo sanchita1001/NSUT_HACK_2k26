@@ -3,6 +3,6 @@ import { NetworkController } from '../controllers/network.controller';
 
 const router = Router();
 
-router.get('/:id', NetworkController.getNetwork);
+router.get('/:id', NetworkController.getVendorNetwork);
 
 export default router;

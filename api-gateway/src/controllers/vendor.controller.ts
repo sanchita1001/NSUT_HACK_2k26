@@ -1,7 +1,89 @@
 import { Request, Response } from 'express';
-import { Vendor } from '../models';
+import { Vendor, Alert } from '../models';
 
 export class VendorController {
+    // ===== FEATURE 8: VENDOR RISK PROFILING =====
+    static async getVendorRiskProfile(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+
+            const vendor = await Vendor.findOne({ id });
+            if (!vendor) {
+                return res.status(404).json({ error: 'Vendor not found' });
+            }
+
+            // Get all alerts for this vendor
+            const alerts = await Alert.find({ vendor: vendor.name });
+
+            const totalTransactions = alerts.length;
+            const totalVolume = alerts.reduce((sum, a) => sum + a.amount, 0);
+            const averageRiskScore = totalTransactions > 0
+                ? alerts.reduce((sum, a) => sum + a.riskScore, 0) / totalTransactions
+                : 0;
+            const flaggedTransactions = alerts.filter(a => a.riskScore > 70).length;
+
+            // Calculate risk trend (last 10 vs previous 10)
+            const sortedAlerts = alerts.sort((a, b) =>
+                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+            const recent10 = sortedAlerts.slice(0, 10);
+            const previous10 = sortedAlerts.slice(10, 20);
+
+            const recentAvg = recent10.length > 0
+                ? recent10.reduce((sum, a) => sum + a.riskScore, 0) / recent10.length
+                : 0;
+            const previousAvg = previous10.length > 0
+                ? previous10.reduce((sum, a) => sum + a.riskScore, 0) / previous10.length
+                : 0;
+
+            let riskTrend = 'stable';
+            if (recentAvg > previousAvg + 10) riskTrend = 'increasing';
+            if (recentAvg < previousAvg - 10) riskTrend = 'decreasing';
+
+            // Detect suspicious patterns
+            const suspiciousPatterns = [];
+
+            // Pattern 1: Multiple round numbers
+            const roundNumbers = alerts.filter(a => a.amount > 10000 && a.amount % 1000 === 0);
+            if (roundNumbers.length > 3) {
+                suspiciousPatterns.push(`${roundNumbers.length} round-number transactions detected`);
+            }
+
+            // Pattern 2: High frequency
+            const last24h = alerts.filter(a =>
+                new Date(a.timestamp).getTime() > Date.now() - 24 * 60 * 60 * 1000
+            );
+            if (last24h.length >= 5) {
+                suspiciousPatterns.push(`High transaction frequency: ${last24h.length} in 24 hours`);
+            }
+
+            // Pattern 3: Consistent high risk
+            if (averageRiskScore > 60) {
+                suspiciousPatterns.push(`Consistently high risk score (avg: ${averageRiskScore.toFixed(0)})`);
+            }
+
+            res.json({
+                vendorId: id,
+                vendorName: vendor.name,
+                totalTransactions,
+                totalVolume: `₹${(totalVolume / 100000).toFixed(2)} L`,
+                averageRiskScore: averageRiskScore.toFixed(1),
+                flaggedTransactions,
+                riskTrend,
+                suspiciousPatterns,
+                recentAlerts: recent10.slice(0, 5).map(a => ({
+                    id: a.id,
+                    amount: a.amount,
+                    riskScore: a.riskScore,
+                    date: a.date
+                }))
+            });
+        } catch (error: any) {
+            console.error('Vendor risk profile error:', error);
+            res.status(500).json({ error: error.message || 'Failed to fetch risk profile' });
+        }
+    }
+
     static async createVendor(req: Request, res: Response) {
         try {
             const { id, name, pan, address, riskScore, status } = req.body;

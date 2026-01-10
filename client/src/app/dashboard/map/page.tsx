@@ -1,55 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
-import api from '@/lib/api';
+import { AlertTriangle, RefreshCw, MapPin } from "lucide-react";
+import dynamic from 'next/dynamic';
 
-// Simplified India Map Coords for Demo
-const DISTRICT_COORDS: Record<string, { cx: number, cy: number, name: string }> = {
-    "Lucknow": { cx: 300, cy: 200, name: "Lucknow" },
-    "Patna": { cx: 450, cy: 220, name: "Patna" },
-    "Mumbai": { cx: 150, cy: 400, name: "Mumbai" },
-    "New Delhi": { cx: 280, cy: 150, name: "New Delhi" },
-};
+// Dynamically import Leaflet to avoid SSR issues
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
+const CircleMarker = dynamic(() => import('react-leaflet').then(mod => mod.CircleMarker), { ssr: false });
 
 export default function MapPage() {
-    const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
-    const [districts, setDistricts] = useState<any[]>([]);
+    const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
     const [alerts, setAlerts] = useState<any[]>([]);
+    const [mapReady, setMapReady] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/alerts');
-            setAlerts(data);
-
-            // Aggregate Data
-            const agg: Record<string, { risk: number, count: number }> = {};
-
-            // Initialize with all known districts (zero stats)
-            Object.keys(DISTRICT_COORDS).forEach(d => {
-                agg[d] = { risk: 0, count: 0 };
-            });
-
-            data.forEach((alert: any) => {
-                const dist = alert.district || "Lucknow"; // Default fallback
-                if (agg[dist]) {
-                    agg[dist].count++;
-                    agg[dist].risk = Math.max(agg[dist].risk, alert.riskScore); // Track max risk
-                }
-            });
-
-            // Convert to Array for Map
-            const mapData = Object.keys(agg).map(key => ({
-                id: key,
-                ...DISTRICT_COORDS[key],
-                risk: agg[key].risk,
-                count: agg[key].count
-            })).filter(d => d.count > 0); // Only show active
-
-            setDistricts(mapData);
-
+            const res = await fetch('http://localhost:8000/alerts');
+            if (res.ok) {
+                const data = await res.json();
+                // Filter alerts that have coordinates
+                const alertsWithCoords = data.filter((a: any) => a.latitude && a.longitude);
+                setAlerts(alertsWithCoords);
+            }
         } catch (e) {
             console.error("Map fetch failed", e);
         } finally {
@@ -58,112 +35,148 @@ export default function MapPage() {
     };
 
     useEffect(() => {
+        setMapReady(true);
         fetchData();
-        const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
+        const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
         return () => clearInterval(interval);
     }, []);
 
-    const selectedStats = selectedDistrict ? districts.find(d => d.name === selectedDistrict) : null;
-    const districtAlerts = selectedDistrict ? alerts.filter(a => a.district === selectedDistrict && a.status === 'New').length : 0;
+    const highRiskAlerts = alerts.filter(a => a.riskScore > 70);
+    const centerLat = alerts.length > 0 ? alerts.reduce((sum, a) => sum + a.latitude, 0) / alerts.length : 20.5937;
+    const centerLng = alerts.length > 0 ? alerts.reduce((sum, a) => sum + a.longitude, 0) / alerts.length : 78.9629;
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Geospatial Risk Heatmap</h1>
-                    <p className="text-sm text-gray-500">District-wise anomaly concentration (Live Data).</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Real-Time Geospatial Risk Map</h1>
+                    <p className="text-sm text-gray-500">Live alert locations across India with risk heatmap.</p>
                 </div>
                 <div className="flex items-center space-x-3">
                     <button onClick={fetchData} className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-50">
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
-                    <div className="flex items-center capitalize space-x-2 text-sm text-gray-500">
-                        <span className="flex items-center"><span className="block w-3 h-3 bg-red-500 rounded-full mr-1"></span> Critical</span>
-                        <span className="flex items-center"><span className="block w-3 h-3 bg-orange-500 rounded-full mr-1"></span> High</span>
-                        <span className="flex items-center"><span className="block w-3 h-3 bg-yellow-500 rounded-full mr-1"></span> Medium</span>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span className="flex items-center"><span className="block w-3 h-3 bg-red-500 rounded-full mr-1"></span> High Risk</span>
+                        <span className="flex items-center"><span className="block w-3 h-3 bg-orange-500 rounded-full mr-1"></span> Medium</span>
+                        <span className="flex items-center"><span className="block w-3 h-3 bg-yellow-500 rounded-full mr-1"></span> Low</span>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Map Viewer */}
-                <div className="lg:col-span-2 bg-slate-900 rounded-lg shadow-lg relative h-[500px] flex items-center justify-center overflow-hidden border border-slate-700">
-                    {/* Abstract India Map Outline (SVG) */}
-                    <svg viewBox="0 0 600 600" className="w-[80%] h-[80%] opacity-80">
-                        <path d="M 280 50 L 350 100 L 450 200 L 400 400 L 300 550 L 150 450 L 100 300 L 280 50" fill="none" stroke="#475569" strokeWidth="2" />
+                <div className="lg:col-span-2 bg-white rounded-lg shadow-lg relative h-[600px] overflow-hidden border border-gray-200">
+                    {mapReady && typeof window !== 'undefined' && (
+                        <MapContainer
+                            center={[centerLat, centerLng]}
+                            zoom={5}
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            />
+                            {alerts.map((alert) => {
+                                const color = alert.riskScore > 80 ? '#ef4444' : alert.riskScore > 50 ? '#f97316' : '#eab308';
+                                return (
+                                    <CircleMarker
+                                        key={alert.id}
+                                        center={[alert.latitude, alert.longitude]}
+                                        radius={8 + (alert.riskScore / 10)}
+                                        fillColor={color}
+                                        color="white"
+                                        weight={2}
+                                        opacity={1}
+                                        fillOpacity={0.7}
+                                        eventHandlers={{
+                                            click: () => setSelectedAlert(alert)
+                                        }}
+                                    >
+                                        <Popup>
+                                            <div className="text-sm">
+                                                <p className="font-bold">{alert.id}</p>
+                                                <p>Risk: {alert.riskScore}/100</p>
+                                                <p>Amount: ₹{alert.amount.toLocaleString()}</p>
+                                                <p>Location: {alert.district}</p>
+                                            </div>
+                                        </Popup>
+                                    </CircleMarker>
+                                );
+                            })}
+                        </MapContainer>
+                    )}
 
-                        {/* Render Hotspots */}
-                        {districts.map(d => (
-                            <g key={d.id}
-                                className="cursor-pointer transition-transform hover:scale-110"
-                                onClick={() => setSelectedDistrict(d.name)}
-                            >
-                                {/* Pulse Effect */}
-                                <circle cx={d.cx} cy={d.cy} r={20 + (d.count * 2)} className="animate-ping opacity-20" fill={d.risk > 80 ? "#ef4444" : "#f97316"} />
-                                <circle cx={d.cx} cy={d.cy} r={8 + d.count} fill={d.risk > 80 ? "#ef4444" : "#f97316"} stroke="white" strokeWidth="2" />
-                                <text x={d.cx} y={d.cy + 30} textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">{d.name}</text>
-                                <text x={d.cx} y={d.cy + 42} textAnchor="middle" fill="#cbd5e1" fontSize="10">({d.count})</text>
-                            </g>
-                        ))}
-                    </svg>
-
-                    <div className="absolute top-4 right-4 bg-slate-800 p-3 rounded text-xs text-slate-300 border border-slate-600">
-                        <p className="font-bold text-white mb-1">Live Feed</p>
-                        <p>Total Alerts: {alerts.length}</p>
-                        <p>Active Hotspots: {districts.length}</p>
+                    <div className="absolute top-4 right-4 bg-white p-3 rounded text-xs shadow-lg border border-gray-200 z-[1000]">
+                        <p className="font-bold text-gray-900 mb-1">Live Feed</p>
+                        <p className="text-gray-600">Total Alerts: {alerts.length}</p>
+                        <p className="text-red-600">High Risk: {highRiskAlerts.length}</p>
                     </div>
                 </div>
 
-                {/* Drilldown Panel */}
+                {/* Alert Details Panel */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    {selectedDistrict ? (
+                    {selectedAlert ? (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-gray-900">{selectedDistrict} Region</h2>
-                                <span className={`text-white text-xs px-2 py-1 rounded-full font-bold ${(selectedStats?.risk || 0) > 80 ? 'bg-red-600' : 'bg-orange-500'
-                                    }`}>
-                                    {(selectedStats?.risk || 0) > 80 ? 'Critical Risk' : 'High Risk'}
+                                <h2 className="text-xl font-bold text-gray-900">{selectedAlert.district}</h2>
+                                <span className={`text-white text-xs px-2 py-1 rounded-full font-bold ${selectedAlert.riskScore > 80 ? 'bg-red-600' : 'bg-orange-500'}`}>
+                                    {selectedAlert.riskScore > 80 ? 'Critical' : 'High Risk'}
                                 </span>
                             </div>
 
                             <div className="p-4 bg-red-50 border border-red-100 rounded-sm">
                                 <p className="text-sm text-red-800 font-medium flex items-center">
                                     <AlertTriangle className="h-4 w-4 mr-2" />
-                                    {districtAlerts} Active Alerts Detected
+                                    Alert ID: {selectedAlert.id}
                                 </p>
                             </div>
 
-                            <div className="space-y-3">
-                                <h3 className="text-sm font-bold text-gray-700 uppercase">Recent Activity</h3>
-                                <div className="max-h-60 overflow-y-auto space-y-2">
-                                    {alerts.filter(a => a.district === selectedDistrict).slice(0, 5).map(alert => (
-                                        <div key={alert.id} className="text-xs p-2 bg-gray-50 border border-gray-100 rounded">
-                                            <div className="flex justify-between font-bold text-gray-800">
-                                                <span>{alert.id}</span>
-                                                <span className={alert.riskScore > 80 ? "text-red-600" : "text-orange-600"}>{alert.riskScore}</span>
-                                            </div>
-                                            <div className="text-gray-500 mt-1 truncate">{alert.mlReasons?.[0] || "Suspicious Activity"}</div>
-                                        </div>
-                                    ))}
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Risk Score:</span>
+                                    <span className="font-bold text-red-600">{selectedAlert.riskScore}/100</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Amount:</span>
+                                    <span className="font-bold">₹{selectedAlert.amount.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Scheme:</span>
+                                    <span className="font-medium">{selectedAlert.scheme}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Vendor:</span>
+                                    <span className="font-medium">{selectedAlert.vendor}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Coordinates:</span>
+                                    <span className="font-mono text-xs">{selectedAlert.latitude.toFixed(4)}, {selectedAlert.longitude.toFixed(4)}</span>
                                 </div>
                             </div>
 
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-bold text-gray-700 uppercase">Detection Reasons</h3>
+                                <ul className="list-disc list-inside text-xs text-gray-600 space-y-1">
+                                    {selectedAlert.mlReasons?.map((reason: string, idx: number) => (
+                                        <li key={idx}>{reason}</li>
+                                    ))}
+                                </ul>
+                            </div>
+
                             <button className="w-full mt-4 bg-blue-900 text-white py-2 rounded-sm text-sm font-medium hover:bg-blue-800">
-                                View District Report
+                                View Full Details
                             </button>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-                            <MapIcon className="h-12 w-12 text-gray-300 mb-2" />
-                            <p>Select a region on the map to analyze risk factors.</p>
+                            <MapPin className="h-12 w-12 text-gray-300 mb-2" />
+                            <p>Click on a marker to view alert details.</p>
+                            <p className="text-xs mt-2">Real-time data updates every 10 seconds</p>
                         </div>
                     )}
                 </div>
             </div>
         </div>
     );
-}
-
-function MapIcon(props: any) {
-    return <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 21 15 18 9 21 3 18 3 6" /><line x1="9" x2="9" y1="3" y2="21" /><line x1="15" x2="15" y1="6" y2="24" /></svg>
 }

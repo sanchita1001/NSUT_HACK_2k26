@@ -39,6 +39,38 @@ class Transaction(BaseModel):
     amount: float
     agency: str
     vendor: str
+    transaction_time: str = None  # Optional: HH:MM format
+
+# ===== FEATURE 5: BENFORD'S LAW =====
+def check_benfords_law(amount):
+    """Check if first digit follows Benford's Law distribution"""
+    if amount < 10:
+        return 0, ""
+    
+    first_digit = int(str(int(amount))[0])
+    # Benford's Law: digits 1-3 are most common, 8-9 are rare
+    if first_digit >= 8:
+        return 15, f"First digit ({first_digit}) violates Benford's Law (rare in natural data)"
+    return 0, ""
+
+# ===== FEATURE 7: TIME-BASED ANOMALY DETECTION =====
+def check_transaction_time(transaction_time):
+    """Flag transactions outside normal business hours"""
+    if not transaction_time:
+        return 0, ""
+    
+    try:
+        hour = int(transaction_time.split(':')[0])
+        # Flag transactions between 10 PM and 6 AM
+        if hour < 6 or hour >= 22:
+            return 20, f"Transaction at unusual time ({transaction_time})"
+        # Flag weekend/late evening (6 PM - 10 PM)
+        if hour >= 18:
+            return 10, f"Transaction during late hours ({transaction_time})"
+    except:
+        pass
+    
+    return 0, ""
 
 # Legacy Notebook Code - Disabled for API Stability
 if False: # Change to True if you want to run EDA/Training script manually
@@ -153,6 +185,18 @@ def predict_fraud(tx: Transaction):
         if tx.amount > 5000000: 
              risk_score += 10
              reasons.append("High Value Transaction Monitor")
+
+        # --- LAYER 4: BENFORD'S LAW (FEATURE 5) ---
+        benford_score, benford_reason = check_benfords_law(tx.amount)
+        if benford_score > 0:
+            risk_score += benford_score
+            reasons.append(benford_reason)
+
+        # --- LAYER 5: TIME-BASED DETECTION (FEATURE 7) ---
+        time_score, time_reason = check_transaction_time(tx.transaction_time)
+        if time_score > 0:
+            risk_score += time_score
+            reasons.append(time_reason)
 
         risk_score = min(99, risk_score)
 

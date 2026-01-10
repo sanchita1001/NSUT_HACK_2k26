@@ -31,6 +31,8 @@ const AlertSchema = new mongoose.Schema({
     beneficiary: String,
     account: String,
     district: String,
+    latitude: Number,
+    longitude: Number,
     timestamp: String,
     state: String,
     mlReasons: [String],

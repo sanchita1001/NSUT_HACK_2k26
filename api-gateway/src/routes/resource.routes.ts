@@ -21,4 +21,7 @@ router.post('/vendors', VendorController.createVendor);
 router.put('/vendors/:id', VendorController.updateVendor);
 router.delete('/vendors/:id', VendorController.deleteVendor);
 
+// FEATURE 8: Vendor Risk Profiling
+router.get('/vendors/:id/risk-profile', VendorController.getVendorRiskProfile);
+
 export default router;

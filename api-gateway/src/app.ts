@@ -6,6 +6,7 @@ import alertRoutes from './routes/alert.routes';
 import networkRoutes from './routes/network.routes';
 import resourceRoutes from './routes/resource.routes';
 import authRoutes from './routes/auth.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import { Scheme, Vendor, AuditLog } from './models'; // Keep legacy simple routes for now
 
 const app = express();
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/alerts', alertRoutes);
 app.use('/network', networkRoutes);
+app.use('/analytics', analyticsRoutes);
 app.use('/', resourceRoutes);
 
 

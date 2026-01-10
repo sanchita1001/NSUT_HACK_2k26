@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Alert, AuditLog } from '../models'; // Assumes models/index.ts exports these
 import { MLService } from '../services/ml.service';
+import { NotificationService } from '../services/notification.service';
 import { Kafka } from 'kafkajs';
 
 // Kafka Setup (Simplistic for now, ideally moved to a separate service)
@@ -23,7 +24,18 @@ export class AlertController {
 
     static async createAlert(req: Request, res: Response) {
         try {
-            const { amount, scheme, vendor, beneficiary, description } = req.body;
+            const { amount, scheme, vendor, beneficiary, description, district } = req.body;
+
+            // ===== FEATURE 1: INPUT VALIDATION =====
+            if (!amount || amount <= 0) {
+                return res.status(400).json({ error: 'Amount must be positive' });
+            }
+            if (!scheme) {
+                return res.status(400).json({ error: 'Scheme is required' });
+            }
+            if (!vendor) {
+                return res.status(400).json({ error: 'Vendor is required' });
+            }
 
             // 1. Get Risk Score from ML Service
             const mlResult = await MLService.predictFraud({
@@ -32,9 +44,64 @@ export class AlertController {
                 vendor: vendor || "Unknown"
             });
 
-            // 2. Risk Evaluation
-            // 2. Risk Evaluation (Manual classification removed as per request)
-            const riskLevel = mlResult.riskScore.toString();
+            // ===== FEATURE 3: VENDOR HISTORY TRACKING =====
+            const vendorAlerts = await Alert.find({ vendor: vendor });
+            const avgVendorRisk = vendorAlerts.length > 0
+                ? vendorAlerts.reduce((sum, a) => sum + a.riskScore, 0) / vendorAlerts.length
+                : 0;
+
+            if (avgVendorRisk > 60 && vendorAlerts.length >= 3) {
+                mlResult.riskScore += 20;
+                mlResult.mlReasons.push(`Vendor has high average risk score (${avgVendorRisk.toFixed(0)})`);
+            }
+
+            // ===== FEATURE 4: TRANSACTION FREQUENCY DETECTION =====
+            const recentCount = await Alert.countDocuments({
+                vendor: vendor,
+                timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() }
+            });
+
+            if (recentCount >= 5) {
+                mlResult.riskScore += 25;
+                mlResult.mlReasons.push(`High transaction frequency: ${recentCount} transactions in 24 hours`);
+            }
+
+            // ===== FEATURE 6: DUPLICATE TRANSACTION DETECTION =====
+            const duplicate = await Alert.findOne({
+                amount: Number(amount),
+                vendor: vendor,
+                scheme: scheme,
+                timestamp: { $gte: new Date(Date.now() - 60 * 60 * 1000).toISOString() } // Last hour
+            });
+
+            if (duplicate) {
+                mlResult.riskScore += 40;
+                mlResult.mlReasons.push(`Duplicate transaction detected (similar to ${duplicate.id})`);
+            }
+
+            // Cap risk score at 99
+            mlResult.riskScore = Math.min(99, mlResult.riskScore);
+
+            // ===== FEATURE 2: PROPER RISK LEVEL CLASSIFICATION =====
+            const getRiskLevel = (score: number): string => {
+                if (score >= 80) return 'Critical';
+                if (score >= 60) return 'High';
+                if (score >= 40) return 'Medium';
+                return 'Low';
+            };
+            const riskLevel = getRiskLevel(mlResult.riskScore);
+
+            // Map districts to real coordinates (India)
+            const districtCoords: Record<string, { lat: number, lng: number }> = {
+                "Lucknow": { lat: 26.8467, lng: 80.9462 },
+                "Patna": { lat: 25.5941, lng: 85.1376 },
+                "Mumbai": { lat: 19.0760, lng: 72.8777 },
+                "New Delhi": { lat: 28.6139, lng: 77.2090 }
+            };
+
+            // Use provided district or default
+            const alertDistrict = district || ["Lucknow", "Patna", "Mumbai", "New Delhi"][Math.floor(Math.random() * 4)];
+            const coords = districtCoords[alertDistrict] || { lat: 20.5937, lng: 78.9629 }; // India center
 
             // 3. Create Alert Record
             const newAlert = await Alert.create({
@@ -50,7 +117,9 @@ export class AlertController {
                 vendor: vendor || "Unknown",
                 beneficiary: beneficiary || "Unknown",
                 account: "XX-" + Math.floor(1000 + Math.random() * 9000),
-                district: ["Lucknow", "Patna", "Mumbai", "New Delhi"][Math.floor(Math.random() * 4)],
+                district: alertDistrict,
+                latitude: coords.lat,
+                longitude: coords.lng,
                 hierarchy: []
             });
 
@@ -63,7 +132,8 @@ export class AlertController {
                             eventId: `EVT-${Date.now()}`,
                             type: 'RISK_SCORED',
                             alertId: newAlert.id,
-                            riskScore: mlResult.riskScore
+                            riskScore: mlResult.riskScore,
+                            riskLevel: riskLevel
                         })
                     }]
                 }).catch(e => console.error("Kafka Publish Error:", e));
@@ -75,13 +145,21 @@ export class AlertController {
                 action: "PAYMENT_PROCESSED",
                 actor: "User",
                 target: newAlert.id,
-                details: `Processed payment of ${amount}. Risk Score: ${mlResult.riskScore}`
+                details: `Processed payment of ₹${amount}. Risk: ${riskLevel} (${mlResult.riskScore})`
             });
 
-            // Return Alert + ML Analysis Flag (isAnomaly) so frontend doesn't need hardcoded thresholds
+            // ===== FEATURE 12: EMAIL NOTIFICATIONS =====
+            // Send email for critical alerts (async, non-blocking)
+            if (mlResult.riskScore >= 90) {
+                NotificationService.sendCriticalAlertEmail(newAlert.toObject()).catch(err =>
+                    console.error('Email notification failed:', err)
+                );
+            }
+
+            // Return Alert + ML Analysis Flag
             return res.json({
                 ...newAlert.toObject(),
-                isAnomaly: mlResult.isAnomaly
+                isAnomaly: mlResult.isAnomaly || mlResult.riskScore >= 70
             });
 
         } catch (error: any) {
