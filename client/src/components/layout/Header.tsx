@@ -1,12 +1,31 @@
 "use client";
 
-import { Bell, Search, Globe } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Search, Globe, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import Link from "next/link";
+import api from "@/lib/api";
 
 export function Header() {
     const { user } = useAuth();
     const { language, toggleLanguage, t } = useLanguage();
+
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [alerts, setAlerts] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        // Fetch Alerts for Notifications
+        api.get('/alerts')
+            .then(res => {
+                // Filter for High Risk or Recent
+                const highRisk = res.data.filter((a: any) => a.riskLevel === 'HIGH' || a.riskLevel === 'CRITICAL');
+                setAlerts(highRisk.slice(0, 5)); // Top 5
+                setUnreadCount(highRisk.length);
+            })
+            .catch(err => console.error(err));
+    }, []);
 
     // Font Size Handlers
     const setFontSize = (size: string) => {
@@ -17,7 +36,7 @@ export function Header() {
     };
 
     return (
-        <div className="flex flex-col w-full shadow-md z-20">
+        <div className="flex flex-col w-full shadow-md z-20 relative">
             {/* Top Accessibility Bar */}
             <div className="bg-[#2a2a2a] text-[#ddd] text-xs py-1.5 px-4 md:px-6 flex justify-between items-center">
                 <div className="hidden md:flex gap-4">
@@ -78,11 +97,48 @@ export function Header() {
                         <Search className="h-4 w-4 text-gray-500 absolute right-3 top-2.5" />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative" title="Notifications">
+                    <div className="flex items-center gap-2 relative">
+                        <button
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative"
+                            title="Notifications"
+                        >
                             <Bell className="h-5 w-5" />
-                            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-600 rounded-full border border-white"></span>
+                            {unreadCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-600 rounded-full border border-white animate-pulse"></span>
+                            )}
                         </button>
+
+                        {/* Notification Dropdown */}
+                        {showNotifications && (
+                            <div className="absolute top-12 right-0 w-80 bg-white shadow-lg border border-gray-200 rounded-sm z-50 overflow-hidden">
+                                <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+                                    <h3 className="text-sm font-bold text-gray-800">Notifications</h3>
+                                    <span className="text-xs text-red-600 font-medium">{unreadCount} Critical</span>
+                                </div>
+                                <div className="max-h-64 overflow-y-auto">
+                                    {alerts.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500 text-sm">No new alerts</div>
+                                    ) : (
+                                        alerts.map(alert => (
+                                            <div key={alert.id} className="p-3 border-b border-gray-100 hover:bg-blue-50 transition-colors cursor-pointer">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-xs font-bold text-red-700 bg-red-100 px-1.5 rounded">{alert.riskLevel}</span>
+                                                    <span className="text-[10px] text-gray-400">{new Date(alert.timestamp).toLocaleDateString()}</span>
+                                                </div>
+                                                <p className="text-sm font-medium text-gray-800 mt-1 line-clamp-1">{alert.vendor}</p>
+                                                <p className="text-xs text-gray-600 line-clamp-2">{alert.mlReasons.join(', ')}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="bg-gray-50 p-2 text-center border-t border-gray-200">
+                                    <Link href="/dashboard/alerts" className="text-xs font-bold text-blue-800 hover:underline">
+                                        View All Alerts
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
