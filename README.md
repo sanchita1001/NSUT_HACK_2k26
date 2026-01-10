@@ -101,4 +101,3 @@ This single command performs the following actions in parallel:
 - **Forensic Validation**: Implements deterministic checks for suspicious "round number" transfers.
 
 ---
-*Generated for NSUT Hackathon 2026*
