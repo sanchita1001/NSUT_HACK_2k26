@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FileText, CheckCircle, Clock, AlertOctagon } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, Clock, AlertOctagon, Trash2, AlertTriangle } from "lucide-react";
 import { Scheme } from "@fds/common";
 
 import api from "@/lib/api";
@@ -9,6 +9,7 @@ import api from "@/lib/api";
 export default function SchemesPage() {
     const [schemes, setSchemes] = useState<Scheme[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteError, setDeleteError] = useState<{ schemeId: string, message: string, dependencies: any } | null>(null);
 
     useEffect(() => {
         api.get('/schemes')
@@ -40,6 +41,27 @@ export default function SchemesPage() {
         }
     };
 
+    const handleDelete = async (schemeId: string) => {
+        try {
+            setDeleteError(null);
+            await api.delete(`/schemes/${schemeId}`);
+            // Reload list
+            const res = await api.get('/schemes');
+            setSchemes(res.data);
+        } catch (error: any) {
+            if (error.response?.status === 409) {
+                // Dependency conflict
+                setDeleteError({
+                    schemeId,
+                    message: error.response.data.message,
+                    dependencies: error.response.data.dependencies
+                });
+            } else {
+                console.error('Delete error:', error);
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 relative">
             <div className="flex justify-between items-center">
@@ -56,7 +78,32 @@ export default function SchemesPage() {
                 </button>
             </div>
 
-            {/* Modal */}
+            {/* Delete Error Modal */}
+            {deleteError && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                        <div className="flex items-center gap-3 mb-4">
+                            <AlertTriangle className="h-6 w-6 text-red-600" />
+                            <h2 className="text-lg font-bold text-red-900">Cannot Delete Scheme</h2>
+                        </div>
+                        <p className="text-gray-700 mb-4">{deleteError.message}</p>
+                        <div className="bg-red-50 p-3 rounded mb-4">
+                            <p className="text-sm font-semibold text-red-900">Dependencies:</p>
+                            <p className="text-sm text-red-700">• {deleteError.dependencies.alerts} alert(s)</p>
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setDeleteError(null)}
+                                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -111,13 +158,22 @@ export default function SchemesPage() {
                             <p className="text-sm text-gray-600 mb-4 line-clamp-2">{scheme.description}</p>
 
                             <div className="border-t border-gray-100 pt-4 mt-4">
-                                <p className="text-xs text-gray-400 uppercase">Budget Allocated</p>
+                                <div className="flex justify-between items-center mb-2">
+                                    <p className="text-xs text-gray-400 uppercase">Budget Allocated</p>
+                                    <p className="text-xs text-gray-500">{(scheme as any).usageCount || 0} alerts</p>
+                                </div>
                                 <p className="text-lg font-mono font-medium text-gray-900">₹{(scheme.budgetAllocated / 10000000).toFixed(1)} Cr</p>
                             </div>
                         </div>
-                        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center text-xs text-blue-600 font-medium">
-                            <span>View Rules & Policy</span>
-                            <Clock className="h-4 w-4 text-gray-400" />
+                        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                            <span className="text-xs text-blue-600 font-medium">View Rules & Policy</span>
+                            <button
+                                onClick={() => handleDelete(scheme.id)}
+                                className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium transition-colors"
+                            >
+                                <Trash2 className="h-3 w-3" />
+                                Delete
+                            </button>
                         </div>
                     </div>
                 ))}

@@ -87,7 +87,7 @@ export class SummaryController {
                     riskScore: alert.riskScore,
                     timestamp: alert.timestamp
                 },
-                vendorContext,
+                vendorContext: profileData.vendor_context || vendorContext,
                 profile: profileData.vendor_profile,
                 fraudScore: profileData.fraud_score,
                 riskScore: profileData.risk_score,
@@ -95,10 +95,13 @@ export class SummaryController {
             });
         } catch (error: any) {
             console.error('[Summary Controller] Error generating profile:', error);
+
+            // Return more specific error message
+            const errorMessage = error.message || 'Failed to generate profile';
             res.status(500).json({
                 success: false,
-                message: 'Failed to generate profile',
-                error: error.message
+                message: errorMessage,
+                error: errorMessage
             });
         }
     }

@@ -6,7 +6,7 @@ import { VendorController } from '../controllers/vendor.controller';
 const router = Router();
 
 // Read-only routes
-router.get('/schemes', ResourceController.getSchemes);
+router.get('/schemes', SchemeController.getSchemes); // Now includes usage counts
 router.get('/vendors', ResourceController.getVendors);
 router.get('/audit-logs', ResourceController.getAuditLogs);
 router.get('/health', ResourceController.getHealth);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Filter, ChevronRight, AlertTriangle, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { Filter, ChevronRight, AlertTriangle, Download, FileJson, FileSpreadsheet, Trash2 } from "lucide-react";
 import { exportToCSV, exportToJSON } from "@/lib/export";
 import { API_ENDPOINTS } from "@/lib/config";
 
@@ -54,6 +54,28 @@ export default function AlertsPage() {
         } catch (err) {
             console.error("Update failed", err);
             fetchAlerts(); // Revert on error
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm(`Are you sure you want to delete alert ${id}? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_ENDPOINTS.ALERTS}/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                // Remove from local state
+                setAlerts(prev => prev.filter(a => a.id !== id));
+            } else {
+                alert('Failed to delete alert');
+            }
+        } catch (err) {
+            console.error("Delete failed", err);
+            alert('Failed to delete alert');
         }
     };
 
@@ -200,6 +222,13 @@ export default function AlertsPage() {
                                         View
                                         <ChevronRight className="h-4 w-4 ml-1" />
                                     </Link>
+                                    <button
+                                        onClick={() => handleDelete(alert.id)}
+                                        className="text-red-600 hover:text-red-900 inline-flex items-center ml-2"
+                                        title="Delete alert"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 </td>
                             </tr>
                         ))}

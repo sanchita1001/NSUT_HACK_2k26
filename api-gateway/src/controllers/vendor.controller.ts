@@ -129,14 +129,37 @@ export class VendorController {
     static async deleteVendor(req: Request, res: Response) {
         try {
             const { id } = req.params;
+            const { confirm } = req.query; // Optional confirmation flag
 
-            const vendor = await Vendor.findOneAndDelete({ id });
-
+            const vendor = await Vendor.findOne({ id });
             if (!vendor) {
                 return res.status(404).json({ error: 'Vendor not found' });
             }
 
-            res.json({ message: 'Vendor deleted successfully', id });
+            // Check for dependencies in Alert collection
+            const alertCount = await Alert.countDocuments({ vendor: vendor.name });
+
+            if (alertCount > 0 && !confirm) {
+                // Return impact analysis without deleting
+                return res.status(409).json({
+                    error: 'Vendor has existing references',
+                    message: `This vendor is referenced by ${alertCount} alert(s). Add ?confirm=true to proceed with deletion.`,
+                    impact: {
+                        alerts: alertCount,
+                        vendorName: vendor.name
+                    },
+                    requiresConfirmation: true
+                });
+            }
+
+            // Delete vendor (alerts will keep vendor name as historical data)
+            await Vendor.findOneAndDelete({ id });
+
+            res.json({
+                message: 'Vendor deleted successfully',
+                id,
+                note: alertCount > 0 ? `${alertCount} alert(s) still reference this vendor name for historical purposes` : undefined
+            });
         } catch (error: any) {
             console.error('Delete vendor error:', error);
             res.status(500).json({ error: error.message || 'Failed to delete vendor' });

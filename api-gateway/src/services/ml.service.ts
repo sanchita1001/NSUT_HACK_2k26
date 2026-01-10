@@ -51,18 +51,33 @@ export class MLService {
     ) {
         try {
             console.log(`[ML Service] Generating vendor profile for ${data.vendor}/${data.agency}`);
-            const response = await axios.post(`${this.ML_URL}/generate-profile`, {
+
+            // Format request to match ML service Transaction model
+            const requestBody = {
                 amount: data.amount,
                 agency: data.agency,
                 vendor: data.vendor,
-                transaction_time: data.transaction_time,
-                vendor_context: vendorContext
-            }, { timeout: 10000 }); // 10s timeout for LLM generation
+                transaction_time: data.transaction_time || new Date().toISOString()
+            };
+
+            const response = await axios.post(`${this.ML_URL}/generate-profile`, requestBody, {
+                timeout: 60000 // 60s timeout for LLM generation (Ollama can be slow)
+            });
 
             return response.data;
         } catch (error: any) {
             console.error("[ML Service] Profile Generation Failed:", error.message);
-            throw new Error("Failed to generate vendor profile");
+
+            // Check if it's an Ollama-specific error
+            if (error.response?.data?.detail) {
+                const detail = error.response.data.detail;
+                if (detail.includes('Ollama') || detail.includes('ollama')) {
+                    throw new Error("Ollama service is unavailable. Please ensure Ollama is running with 'ollama serve'.");
+                }
+            }
+
+            // Generic error
+            throw new Error(error.response?.data?.detail || "Failed to generate vendor profile. ML service may be unavailable.");
         }
     }
 

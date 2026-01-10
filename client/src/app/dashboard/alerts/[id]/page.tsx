@@ -69,9 +69,22 @@ export default function AlertDetailPage() {
             setGeneratingSummary(true);
             setSummaryError("");
             const { data: summary } = await api.post(`/summary/generate/${params.id}`);
+
+            // Enforce that we got a real AI summary
+            if (!summary || !summary.profile) {
+                throw new Error("AI summary generation failed - no profile returned");
+            }
+
             setAiSummary(summary);
         } catch (err: any) {
-            setSummaryError(err.response?.data?.message || "Failed to generate AI summary");
+            const errorMsg = err.response?.data?.message || err.message || "Failed to generate AI summary";
+
+            // Check if it's an Ollama service issue
+            if (errorMsg.includes("Ollama") || errorMsg.includes("unavailable") || errorMsg.includes("offline")) {
+                setSummaryError("⚠️ AI Summary Service Offline - Ollama service is currently unavailable. Please ensure Ollama is running or contact system administrator.");
+            } else {
+                setSummaryError(errorMsg);
+            }
         } finally {
             setGeneratingSummary(false);
         }
@@ -349,7 +362,15 @@ export default function AlertDetailPage() {
                                 )}
                             </button>
                             {summaryError && (
-                                <p className="text-red-600 mt-4">{summaryError}</p>
+                                <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-600 rounded">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-semibold text-red-900">AI Summary Generation Failed</p>
+                                            <p className="text-red-700 text-sm mt-1">{summaryError}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     ) : (

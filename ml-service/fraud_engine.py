@@ -38,13 +38,23 @@ class FraudEngine:
         # Lazy import heavy libraries only when training
         from sklearn.preprocessing import StandardScaler, MinMaxScaler
         from sklearn.ensemble import IsolationForest
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-        import tensorflow as tf
-        from tensorflow.keras import layers, models
         
-        tf.random.set_seed(RANDOM_SEED)
-        tf.get_logger().setLevel('ERROR')
-        
+        self.use_autoencoder = False
+        try:
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+            import tensorflow as tf
+            from tensorflow.keras import layers, models
+            tf.random.set_seed(RANDOM_SEED)
+            tf.get_logger().setLevel('ERROR')
+            self.use_autoencoder = True
+            print("[INFO] TensorFlow available - Autoencoder enabled")
+        except ImportError as e:
+            print(f"[WARNING] TensorFlow not available: {e}. Autoencoder disabled.")
+            self.use_autoencoder = False
+        except Exception as e:
+            print(f"[WARNING] TensorFlow initialization failed: {e}. Autoencoder disabled.")
+            self.use_autoencoder = False
+            
         self.trained_at = datetime.utcnow().isoformat() + "Z"
         df = df.copy()
 
@@ -97,24 +107,34 @@ class FraudEngine:
         self.if_model.fit(X_scaled)
 
         # Autoencoder (subtle anomaly detection - silent but powerful)
-        input_dim = X_scaled.shape[1]
-        input_layer = layers.Input(shape=(input_dim,))
-        encoded = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(input_layer)
-        encoded = layers.Dense(16, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(encoded)
-        decoded = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(encoded)
-        decoded = layers.Dense(input_dim, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(decoded)
+        if self.use_autoencoder:
+            try:
+                input_dim = X_scaled.shape[1]
+                input_layer = layers.Input(shape=(input_dim,))
+                encoded = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(input_layer)
+                encoded = layers.Dense(16, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(encoded)
+                decoded = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(encoded)
+                decoded = layers.Dense(input_dim, kernel_initializer=tf.keras.initializers.GlorotUniform(seed=RANDOM_SEED))(decoded)
 
-        self.ae_model = models.Model(input_layer, decoded)
-        self.ae_model.compile(optimizer="adam", loss="mse")
-        self.ae_model.fit(X_scaled, X_scaled, epochs=30, batch_size=64, shuffle=True, verbose=0)
+                self.ae_model = models.Model(input_layer, decoded)
+                self.ae_model.compile(optimizer="adam", loss="mse")
+                self.ae_model.fit(X_scaled, X_scaled, epochs=30, batch_size=64, shuffle=True, verbose=0)
+                
+                # Pre-calculate reconstruction errors for normalization
+                recon = self.ae_model.predict(X_scaled, verbose=0)
+                ae_score = np.mean(np.square(X_scaled - recon), axis=1)
+            except Exception as e:
+                print(f"[WARNING] Autoencoder training failed: {e}. Disabling.")
+                self.use_autoencoder = False
 
         # Hybrid score normalization
         if_score = -self.if_model.score_samples(X_scaled)
-        recon = self.ae_model.predict(X_scaled, verbose=0)
-        ae_score = np.mean(np.square(X_scaled - recon), axis=1)
-
+        
         self.mm_scaler = MinMaxScaler()
-        self.mm_scaler.fit(np.vstack([if_score, ae_score]).T)
+        if self.use_autoencoder:
+             self.mm_scaler.fit(np.vstack([if_score, ae_score]).T)
+        else:
+             self.mm_scaler.fit(if_score.reshape(-1, 1))
 
         # Global statistics
         self.stats["global_99th"] = df["awarded_amt"].quantile(0.99)
@@ -185,11 +205,27 @@ class FraudEngine:
 
         # ===== FRAUD SCORE (ML Signal) =====
         if_score = -self.if_model.score_samples(X_scaled)[0]
-        recon = self.ae_model.predict(X_scaled, verbose=0)[0]
-        ae_score = np.mean(np.square(X_scaled[0] - recon))
+        
+        if self.use_autoencoder and self.ae_model:
+            try:
+                recon = self.ae_model.predict(X_scaled, verbose=0)[0]
+                ae_score = np.mean(np.square(X_scaled[0] - recon))
+                if_norm, ae_norm = self.mm_scaler.transform([[if_score, ae_score]])[0]
+                fraud_score = 0.6 * if_norm + 0.4 * ae_norm  # Weighted hybrid
+            except:
+                # Fallback if prediction fails
+                 fraud_score = self.mm_scaler.transform([[if_score]])[0][0]
+        else:
+             # Pure Isolation Forest score if Autoencoder disabled
+             if hasattr(self.mm_scaler, 'n_features_in_') and self.mm_scaler.n_features_in_ == 2:
+                  # If scaler was somehow fit with 2 dims but we only have 1 now (should handle in init)
+                  # Re-fit scaler for 1 dim logic on the fly or just use raw normalization
+                  fraud_score = (if_score - self.mm_scaler.data_min_[0]) / (self.mm_scaler.data_max_[0] - self.mm_scaler.data_min_[0])
+             else:
+                  fraud_score = self.mm_scaler.transform([[if_score]])[0][0]
 
-        if_norm, ae_norm = self.mm_scaler.transform([[if_score, ae_score]])[0]
-        fraud_score = 0.6 * if_norm + 0.4 * ae_norm  # Weighted hybrid
+        # Ensure valid range
+        fraud_score = max(0.0, min(1.0, fraud_score))
 
         # ===== RISK SCORE (Human Judgment Layer) =====
         risk_score = 10
@@ -218,7 +254,7 @@ class FraudEngine:
             reasons.append("AI detected unusual pattern (Isolation Forest)")
 
         # Layer 5: Autoencoder anomaly (silent but powerful)
-        if ae_score > 0.5:  # High reconstruction error
+        if self.use_autoencoder and 'ae_score' in locals() and ae_score > 0.5:  # High reconstruction error
             risk_score += 20
             reasons.append("Deep learning detected subtle anomaly (Autoencoder)")
 

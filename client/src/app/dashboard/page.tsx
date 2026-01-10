@@ -104,7 +104,9 @@ export default function DashboardPage() {
                         <div>
                             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Detection Rate</p>
                             <div className="mt-2">
-                                <p className="text-3xl sm:text-4xl font-bold text-gray-900">98.5%</p>
+                                <p className="text-3xl sm:text-4xl font-bold text-gray-900">
+                                    {stats?.detectionRate ? `${stats.detectionRate}%` : 'N/A'}
+                                </p>
                             </div>
                         </div>
                         <div className="p-3 bg-blue-100 rounded-lg">
@@ -128,7 +130,7 @@ export default function DashboardPage() {
                                 <div className="flex items-start justify-between mb-2">
                                     <span className="text-sm font-semibold text-blue-600">{alert.id}</span>
                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${alert.riskScore > 70 ? 'bg-red-100 text-red-800' :
-                                            alert.riskScore > 30 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                                        alert.riskScore > 30 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
                                         }`}>
                                         {alert.riskScore}/100
                                     </span>
@@ -168,7 +170,7 @@ export default function DashboardPage() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{alert.scheme}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${alert.riskScore > 70 ? 'bg-red-100 text-red-800' :
-                                                    alert.riskScore > 30 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                                                alert.riskScore > 30 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {alert.riskScore}/100
                                             </span>

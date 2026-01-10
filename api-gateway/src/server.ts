@@ -55,11 +55,31 @@ async function seedDatabase() {
     }
 }
 
+// --- Check Ollama Connection ---
+async function checkOllamaConnection() {
+    try {
+        const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+        const axios = require('axios');
+
+        const response = await axios.get(ML_SERVICE_URL, { timeout: 3000 });
+
+        if (response.data && response.data.status === 'Active') {
+            console.log('✅ Ollama Connected Successfully via ML Service');
+            console.log(`   Model: ${response.data.model_version}`);
+            console.log(`   Features: Ollama llama3:8b Profiling`);
+        }
+    } catch (error: any) {
+        console.warn('⚠️ Ollama/ML Service Not Available');
+        console.warn('   AI summaries will not work. Start ML service: cd ml-service && python ml_model.py');
+    }
+}
+
 // --- Server Start ---
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log(`Connected to MongoDB at ${MONGO_URI}`);
         await seedDatabase();
+        await checkOllamaConnection();
 
         app.listen(PORT, () => {
             console.log(`🚀 API Gateway running on port ${PORT}`);

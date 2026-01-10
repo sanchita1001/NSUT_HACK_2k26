@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Building2, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { Search, Building2, AlertTriangle, ArrowUpRight, Trash2, XCircle } from "lucide-react";
 import { Vendor } from "@fds/common";
 import Link from "next/link";
 
@@ -9,6 +9,7 @@ import api from "@/lib/api";
 
 export default function VendorsPage() {
     const [vendors, setVendors] = useState<Vendor[]>([]);
+    const [deleteImpact, setDeleteImpact] = useState<{ vendorId: string, message: string, impact: any } | null>(null);
 
     useEffect(() => {
         api.get('/vendors')
@@ -38,6 +39,27 @@ export default function VendorsPage() {
         }
     };
 
+    const handleDelete = async (vendorId: string, confirm: boolean = false) => {
+        try {
+            setDeleteImpact(null);
+            await api.delete(`/vendors/${vendorId}${confirm ? '?confirm=true' : ''}`);
+            // Reload list
+            const res = await api.get('/vendors');
+            setVendors(res.data);
+        } catch (error: any) {
+            if (error.response?.status === 409) {
+                // Impact analysis - requires confirmation
+                setDeleteImpact({
+                    vendorId,
+                    message: error.response.data.message,
+                    impact: error.response.data.impact
+                });
+            } else {
+                console.error('Delete error:', error);
+            }
+        }
+    };
+
     return (
         <div className="space-y-6 relative">
             <div className="flex justify-between items-center">
@@ -60,7 +82,42 @@ export default function VendorsPage() {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Delete Impact Modal */}
+            {deleteImpact && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+                        <div className="flex items-center gap-3 mb-4">
+                            <AlertTriangle className="h-6 w-6 text-orange-600" />
+                            <h2 className="text-lg font-bold text-orange-900">Confirm Vendor Deletion</h2>
+                        </div>
+                        <p className="text-gray-700 mb-4">{deleteImpact.message}</p>
+                        <div className="bg-orange-50 p-3 rounded mb-4">
+                            <p className="text-sm font-semibold text-orange-900">Impact:</p>
+                            <p className="text-sm text-orange-700">• {deleteImpact.impact.alerts} alert(s) reference this vendor</p>
+                            <p className="text-sm text-gray-600 mt-2">Historical alert data will be preserved.</p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setDeleteImpact(null)}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    handleDelete(deleteImpact.vendorId, true);
+                                    setDeleteImpact(null);
+                                }}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                                Confirm Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -96,7 +153,7 @@ export default function VendorsPage() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Volume</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -126,9 +183,18 @@ export default function VendorsPage() {
                                         }`}>{v.accountStatus}</span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                                    <Link href={`/dashboard/vendors/${v.id}`} className="text-blue-600 hover:text-blue-900 text-xs font-medium flex justify-end items-center">
-                                        Analysis <ArrowUpRight className="h-3 w-3 ml-1" />
-                                    </Link>
+                                    <div className="flex justify-end items-center gap-3">
+                                        <Link href={`/dashboard/vendors/${v.id}`} className="text-blue-600 hover:text-blue-900 text-xs font-medium flex items-center">
+                                            Analysis <ArrowUpRight className="h-3 w-3 ml-1" />
+                                        </Link>
+                                        <button
+                                            onClick={() => handleDelete(v.id)}
+                                            className="text-red-600 hover:text-red-900 text-xs font-medium flex items-center gap-1"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                            Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
