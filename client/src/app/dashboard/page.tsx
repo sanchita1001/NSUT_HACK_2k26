@@ -68,7 +68,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-8">
-                <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Recent High Risk Alerts</h3>
+                <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Recent Network Activity</h3>
                 <div className="bg-white shadow-sm rounded-sm border border-gray-200 overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -81,13 +81,14 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {stats?.recentHighRisk?.length > 0 ? (
-                                stats.recentHighRisk.map((alert: any) => (
+                            {stats?.recentTransactions?.length > 0 ? (
+                                stats.recentTransactions.map((alert: any) => (
                                     <tr key={alert.id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{alert.id}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{alert.scheme}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${alert.riskScore > 90 ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${alert.riskScore > 70 ? 'bg-red-100 text-red-800' :
+                                                alert.riskScore > 30 ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {alert.riskScore}/100
                                             </span>
@@ -98,7 +99,7 @@ export default function DashboardPage() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">No high risk alerts found.</td>
+                                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">No recent transactions found.</td>
                                 </tr>
                             )}
                         </tbody>

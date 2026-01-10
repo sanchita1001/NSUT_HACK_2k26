@@ -106,11 +106,17 @@ export class AlertController {
                 .sort({ timestamp: -1 })
                 .limit(5);
 
+            // Get recent transactions (ALL)
+            const recentTransactions = await Alert.find()
+                .sort({ timestamp: -1 })
+                .limit(5);
+
             res.json({
                 totalAlerts,
                 recentAlerts,
                 totalVolume: `₹${(totalVolume / 10000000).toFixed(2)} Cr`,
-                recentHighRisk
+                recentHighRisk,
+                recentTransactions
             });
         } catch (error: any) {
             res.status(500).json({ error: error.message });
