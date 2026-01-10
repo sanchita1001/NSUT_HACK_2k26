@@ -35,6 +35,16 @@ app = FastAPI(
     version=MODEL_VERSION
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all for internal service
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 fraud_engine: Optional[FraudEngine] = None
 
 
@@ -265,6 +275,24 @@ def get_vendor_history(vendor: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to fetch vendor history")
 
+
+@app.post("/chat")
+async def chat(request: dict):
+    """
+    Chat with PFMS Sahayak (Ollama backed)
+    """
+    try:
+        message = request.get("message", "")
+        if not message:
+            raise HTTPException(status_code=400, detail="Message required")
+            
+        print(f"Chat Request: {message}")
+        response_text = SummaryGenerator.chat_response(message)
+        return {"response": response_text}
+        
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return {"response": "System Error: Unable to process chat request."}
 
 
 # ==================== MAIN ====================

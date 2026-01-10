@@ -24,31 +24,35 @@ export function SahayakBot() {
 
     useEffect(scrollToBottom, [messages, isTyping, isListening]);
 
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!input.trim()) return;
         const newMsg: Message = { role: 'user', text: input };
         setMessages(prev => [...prev, newMsg]);
         setInput("");
         setIsTyping(true);
 
-        // Mock AI Response Logic
-        setTimeout(() => {
-            let response = "I can help with that. Please describe the specific scheme or vendor.";
-            const lowerInput = newMsg.text.toLowerCase();
+        try {
+            // Direct call to ML Service (FastAPI) as per user request for Port 8000
+            const res = await fetch('http://localhost:8000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: newMsg.text })
+            });
 
-            if (lowerInput.includes("vendor") || lowerInput.includes("payment")) {
-                response = "I found 3 vendors with similar names. 'Rural Infra Builders' (ID: VEN-882) has a high risk score of 88.";
-            } else if (lowerInput.includes("scheme") || lowerInput.includes("fund")) {
-                response = "PM-KISAN scheme utilization is 92%. However, distinct anomalies detected in Sitapur district.";
-            } else if (lowerInput.includes("alert") || lowerInput.includes("fraud")) {
-                response = "There are 2 critical alerts pending review in the last 24 hours.";
-            } else if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-                response = "Namaste Officer! How can I assist you with fraud detection today?";
-            }
+            if (!res.ok) throw new Error("Failed to connect to Sahayak Brain");
 
-            setMessages(prev => [...prev, { role: 'bot', text: response }]);
+            const data = await res.json();
+            setMessages(prev => [...prev, { role: 'bot', text: data.response }]);
+
+        } catch (error) {
+            console.error("Chat Error:", error);
+            setMessages(prev => [...prev, {
+                role: 'bot',
+                text: "I'm having trouble accessing the data right now. Please check if the API is running on port 8000."
+            }]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     const handleVoice = () => {

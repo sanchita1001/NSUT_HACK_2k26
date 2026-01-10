@@ -108,3 +108,41 @@ Be concise, factual, and focus only on the provided risk indicators and vendor h
         except Exception as e:
             print(f"Ollama generation failed: {e}")
             return SummaryGenerator.generate_basic_summary(prediction) + " [LLM failed]"
+
+    @staticmethod
+    def chat_response(message: str) -> str:
+        """
+        Interative Chat with PFMS Sahayak
+        """
+        try:
+            import ollama
+            
+            system_prompt = """You are PFMS Sahayak, an intelligent government assistant for the Public Financial Management System (PFMS) of India.
+Your role is to assist officers in detecting fraud, understanding scheme performance, and analyzing vendor risks.
+
+Capabilities:
+- You help explain complex fraud indicators.
+- You provide guidance on government schemes (PM-KISAN, MGNREGA, etc.).
+- You are professional, concise, and authoritative.
+
+Current Context:
+The user is an oversight officer monitoring real-time transactions.
+
+If the user asks about specific vendors or schemes, explain that you can analyze them if they navigate to the respective dashboard or provide an ID.
+Do not hallucinate specific data unless provided in the context."""
+
+            response = ollama.chat(
+                model='llama3:8b',
+                messages=[
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': message},
+                ]
+            )
+            
+            return response['message']['content']
+            
+        except ImportError:
+            return "I am currently running in offline mode. Please install the 'ollama' python package to enable AI chat."
+        except Exception as e:
+            print(f"Chat error: {e}")
+            return "I am having trouble accessing the neural network. Please ensure the Ollama service is running on port 11434."
