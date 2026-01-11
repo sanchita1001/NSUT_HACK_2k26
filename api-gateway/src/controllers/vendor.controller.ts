@@ -88,7 +88,7 @@ export class VendorController {
         try {
             const {
                 id, name, gstin, address, riskScore, status, latitude, longitude, selectedScheme,
-                paymentBehavior, timingToleranceDays, maxAmount
+                paymentBehavior, timingToleranceDays, maxAmount, totalTenderAmount
             } = req.body;
 
             // Validate payment behavior tolerance (Fix #8)
@@ -111,7 +111,8 @@ export class VendorController {
                 operatingSchemes: selectedScheme ? [selectedScheme] : [],
                 paymentBehavior: paymentBehavior || 'REGULAR',
                 timingToleranceDays: tolerance,
-                maxAmount: maxAmount ? Number(maxAmount) : undefined
+                maxAmount: maxAmount ? Number(maxAmount) : undefined,
+                totalTenderAmount: totalTenderAmount ? Number(totalTenderAmount) : undefined
             });
 
             res.status(201).json(vendor);

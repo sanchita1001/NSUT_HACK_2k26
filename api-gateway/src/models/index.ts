@@ -23,7 +23,8 @@ const VendorSchema = new mongoose.Schema({
     operatingSchemes: [String], // List of schemes the vendor is enrolled in
     paymentBehavior: String, // 'REGULAR' | 'QUARTERLY' | 'MILESTONE' | 'IRREGULAR'
     timingToleranceDays: Number, // Permitted deviation in days
-    maxAmount: Number // Maximum allowed transaction amount
+    maxAmount: Number, // Maximum allowed PER transaction amount
+    totalTenderAmount: Number // Maximum allowed CUMULATIVE amount (Total Contract Value)
 });
 
 const AlertSchema = new mongoose.Schema({
@@ -83,6 +84,7 @@ export interface IVendor extends mongoose.Document {
     paymentBehavior?: string;
     timingToleranceDays?: number;
     maxAmount?: number;
+    totalTenderAmount?: number;
 }
 
 export interface IAlert extends mongoose.Document {

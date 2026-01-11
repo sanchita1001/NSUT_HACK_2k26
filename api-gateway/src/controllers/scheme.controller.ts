@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Scheme } from '../models';
+import { AuditLogService, AuditEventType, AuditSeverity } from '../services/audit.service';
 
 export class SchemeController {
     static async createScheme(req: Request, res: Response) {
@@ -13,6 +14,23 @@ export class SchemeController {
                 budgetAllocated,
                 status: status || 'ACTIVE',
                 description
+            });
+
+            // Log the creation
+            await AuditLogService.log({
+                eventType: AuditEventType.SCHEME_UPDATED, // Using SCHEME_UPDATED as generic for now
+                actor: {
+                    id: 'admin',
+                    name: 'Admin User',
+                    role: 'admin'
+                },
+                action: 'Scheme Created',
+                target: {
+                    type: 'Scheme',
+                    id: name
+                },
+                metadata: { id, ministry, status, budget: budgetAllocated },
+                severity: AuditSeverity.INFO
             });
 
             res.status(201).json(scheme);

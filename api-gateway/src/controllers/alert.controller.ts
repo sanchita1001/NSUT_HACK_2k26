@@ -217,7 +217,8 @@ export class AlertController {
                 agency: scheme || "Unknown",
                 vendor: vendor || "Unknown",
                 paymentBehavior,
-                daysSinceLastPayment: daysSinceLast
+                daysSinceLastPayment: daysSinceLast,
+                totalTenderAmount: vendorProfile.totalTenderAmount || 0
             });
 
             // Add payment behavior violations to ML reasons
@@ -233,6 +234,26 @@ export class AlertController {
                 mlResult.riskScore = Math.min(mlResult.riskScore + benfordCheck.riskIncrease, 100);
                 if (benfordCheck.reason) {
                     mlResult.mlReasons.push(benfordCheck.reason);
+                }
+            }
+
+            // NEW: Total Tender Amount / Contract Value Check
+            if (vendorProfile.totalTenderAmount && vendorProfile.totalTenderAmount > 0) {
+                const vendorTotalVolume = await Alert.aggregate([
+                    { $match: { vendorId: vendorProfile.id } }, // Match by ID for accuracy
+                    { $group: { _id: null, total: { $sum: "$amount" } } }
+                ]);
+
+                const currentTotal = (vendorTotalVolume[0]?.total || 0);
+                const projectedTotal = currentTotal + Number(amount);
+
+                if (projectedTotal > vendorProfile.totalTenderAmount) {
+                    const excess = projectedTotal - vendorProfile.totalTenderAmount;
+                    mlResult.riskScore = 100; // CRITICAL VIOLATION - Instant max risk
+                    mlResult.mlReasons.push(
+                        `Tender Limit Exceeded: Total given ₹${currentTotal.toLocaleString()} + new ₹${Number(amount).toLocaleString()} > Limit ₹${vendorProfile.totalTenderAmount.toLocaleString()}. Excess: ₹${excess.toLocaleString()}`
+                    );
+                    mlResult.isAnomaly = true;
                 }
             }
 

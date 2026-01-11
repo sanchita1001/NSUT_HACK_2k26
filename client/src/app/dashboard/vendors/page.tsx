@@ -36,7 +36,8 @@ export default function VendorsPage() {
         longitude: '',
         paymentBehavior: 'REGULAR',
         timingToleranceDays: '0',
-        maxAmount: ''
+        maxAmount: '',
+        totalTenderAmount: ''
     });
     const [geocoding, setGeocoding] = useState(false);
 
@@ -85,7 +86,7 @@ export default function VendorsPage() {
             setShowModal(false);
             const res = await api.get('/vendors');
             setVendors(res.data);
-            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0', maxAmount: '' });
+            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0', maxAmount: '', totalTenderAmount: '' });
 
             // Trigger map update for new vendor
             triggerMapUpdate();
@@ -273,7 +274,19 @@ export default function VendorsPage() {
                                     value={formData.maxAmount}
                                     onChange={e => setFormData({ ...formData, maxAmount: e.target.value })}
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Maximum allowed per transaction. Leave empty for no limit.</p>
+                                <p className="text-xs text-gray-500 mt-1">Maximum allowed per individual transaction.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Total Tender Value / Contract Limit (₹)</label>
+                                <input
+                                    type="number"
+                                    className="w-full border p-2 rounded"
+                                    placeholder="e.g. 5000000"
+                                    value={formData.totalTenderAmount}
+                                    onChange={e => setFormData({ ...formData, totalTenderAmount: e.target.value })}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Total cumulative amount allowed for this vendor. Exceeding this will trigger Critical alerts.</p>
                             </div>
 
 

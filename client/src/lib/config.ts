@@ -40,7 +40,8 @@ export async function apiCall<T>(
     options?: RequestInit
 ): Promise<T> {
     try {
-        const response = await fetch(endpoint, {
+        const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+        const response = await fetch(url, {
             ...options,
             headers: {
                 'Content-Type': 'application/json',

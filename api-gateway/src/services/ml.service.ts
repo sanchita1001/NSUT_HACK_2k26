@@ -9,6 +9,7 @@ export class MLService {
         vendor: string;
         paymentBehavior?: string;
         daysSinceLastPayment?: number;
+        totalTenderAmount?: number;
     }) {
         try {
             console.log(`[ML Service] Sending request to ${this.ML_URL}/predict`, data);
@@ -17,7 +18,8 @@ export class MLService {
                 agency: data.agency,
                 vendor: data.vendor,
                 payment_behavior: data.paymentBehavior,
-                timing_accuracy_days: data.daysSinceLastPayment // Mapping to ML model field
+                timing_accuracy_days: data.daysSinceLastPayment, // Mapping to ML model field
+                total_tender_amount: data.totalTenderAmount // NEW: Sync with ML
             }, { timeout: 5000 }); // 5s timeout
 
             return {

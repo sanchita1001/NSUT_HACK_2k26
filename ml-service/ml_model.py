@@ -56,6 +56,7 @@ class Transaction(BaseModel):
     transaction_time: Optional[str] = None
     payment_behavior: Optional[str] = "REGULAR" 
     timing_accuracy_days: Optional[int] = 0
+    total_tender_amount: Optional[float] = 0.0 # NEW: Sync with Gateway
 
 
 # ==================== STARTUP ====================
