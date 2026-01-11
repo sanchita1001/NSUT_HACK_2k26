@@ -18,9 +18,11 @@ interface AlertData {
 
 export default function AlertsPage() {
     const [filterStatus, setFilterStatus] = useState("All");
+    const [filterRiskLevel, setFilterRiskLevel] = useState("All");
     const [alerts, setAlerts] = useState<AlertData[]>([]);
     const [loading, setLoading] = useState(true);
     const [showExportMenu, setShowExportMenu] = useState(false);
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
 
     const fetchAlerts = async (initialLoad = false) => {
         try {
@@ -41,19 +43,26 @@ export default function AlertsPage() {
     };
 
     const handleAction = async (id: string, newStatus: string) => {
-        // Optimistic Update
-        setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
-
         try {
             const res = await fetch(API_ENDPOINTS.ALERT_STATUS(id), {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
-            if (!res.ok) throw new Error("Failed to update");
+
+            if (!res.ok) {
+                throw new Error("Failed to update");
+            }
+
+            // Update local state after successful server response
+            const data = await res.json();
+            setAlerts(prev => prev.map(a =>
+                a.id === id ? { ...a, status: data.alert.status } : a
+            ));
+
         } catch (err) {
             console.error("Update failed", err);
-            fetchAlerts(); // Revert on error
+            alert('Failed to update alert status. Please try again.');
         }
     };
 
@@ -95,9 +104,12 @@ export default function AlertsPage() {
         return () => clearInterval(interval);
     }, []);
 
-    const filteredAlerts = filterStatus === "All"
-        ? alerts
-        : alerts.filter(a => a.status === filterStatus);
+    // Apply both status and risk level filters
+    const filteredAlerts = alerts.filter(alert => {
+        const statusMatch = filterStatus === "All" || alert.status === filterStatus;
+        const riskMatch = filterRiskLevel === "All" || alert.riskLevel === filterRiskLevel;
+        return statusMatch && riskMatch;
+    });
 
     if (loading) {
         return <div className="p-10 text-center text-gray-500">Loading Secure Alert Stream...</div>;
@@ -111,10 +123,35 @@ export default function AlertsPage() {
                     <p className="text-sm text-gray-500">Monitor and investigate transaction anomalies.</p>
                 </div>
                 <div className="flex space-x-3">
-                    <button className="flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Filter
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowFilterMenu(!showFilterMenu)}
+                            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filter {filterRiskLevel !== "All" && `(${filterRiskLevel})`}
+                        </button>
+                        {showFilterMenu && (
+                            <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                <div className="p-2">
+                                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Risk Level</p>
+                                    {["All", "Critical", "High", "Medium", "Low"].map((level) => (
+                                        <button
+                                            key={level}
+                                            onClick={() => {
+                                                setFilterRiskLevel(level);
+                                                setShowFilterMenu(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-100 ${filterRiskLevel === level ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"
+                                                }`}
+                                        >
+                                            {level}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <div className="relative">
                         <button
                             onClick={() => setShowExportMenu(!showExportMenu)}
@@ -205,16 +242,48 @@ export default function AlertsPage() {
                                     {alert.status === 'New' && (
                                         <>
                                             <button
-                                                onClick={() => handleAction(alert.id, 'Verified')}
-                                                className="text-green-600 hover:text-green-900 border border-green-200 px-2 py-1 rounded hover:bg-green-50"
+                                                onClick={() => handleAction(alert.id, 'Investigating')}
+                                                className="text-blue-600 hover:text-blue-900 border border-blue-200 px-2 py-1 rounded hover:bg-blue-50"
                                             >
-                                                Verify
+                                                Investigate
                                             </button>
                                             <button
-                                                onClick={() => handleAction(alert.id, 'False Positive')}
+                                                onClick={() => handleAction(alert.id, 'Closed')}
                                                 className="text-red-600 hover:text-red-900 border border-red-200 px-2 py-1 rounded hover:bg-red-50"
                                             >
                                                 Dismiss
+                                            </button>
+                                        </>
+                                    )}
+                                    {alert.status === 'Investigating' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleAction(alert.id, 'Review')}
+                                                className="text-orange-600 hover:text-orange-900 border border-orange-200 px-2 py-1 rounded hover:bg-orange-50"
+                                            >
+                                                Send to Review
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(alert.id, 'Closed')}
+                                                className="text-gray-600 hover:text-gray-900 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50"
+                                            >
+                                                Close
+                                            </button>
+                                        </>
+                                    )}
+                                    {alert.status === 'Review' && (
+                                        <>
+                                            <button
+                                                onClick={() => handleAction(alert.id, 'Closed')}
+                                                className="text-green-600 hover:text-green-900 border border-green-200 px-2 py-1 rounded hover:bg-green-50"
+                                            >
+                                                Approve & Close
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(alert.id, 'Investigating')}
+                                                className="text-yellow-600 hover:text-yellow-900 border border-yellow-200 px-2 py-1 rounded hover:bg-yellow-50"
+                                            >
+                                                Re-investigate
                                             </button>
                                         </>
                                     )}

@@ -149,6 +149,7 @@ export class AlertController {
         }
     }
 
+
     static async createAlert(req: Request, res: Response) {
         try {
             const { amount, scheme, vendor, beneficiary, description, district, transactionId } = req.body;
@@ -443,9 +444,12 @@ export class AlertController {
             const { status } = req.body;
             const user = (req as any).user;
 
-            const validStatuses = ['New', 'Investigating', 'Verified', 'Dismissed', 'Closed'];
+            // Fixed: Match frontend workflow statuses
+            const validStatuses = ['New', 'Investigating', 'Review', 'Closed'];
             if (!validStatuses.includes(status)) {
-                return res.status(400).json({ error: 'Invalid status' });
+                return res.status(400).json({
+                    error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+                });
             }
 
             const alert = await Alert.findOne({ id });
@@ -468,7 +472,18 @@ export class AlertController {
                 { changedAt: new Date().toISOString() }
             );
 
-            return res.json({ message: 'Status updated', alert: alert.toObject() });
+            return res.json({
+                success: true,
+                message: 'Status updated',
+                alert: {
+                    id: alert.id,
+                    status: alert.status,
+                    riskScore: alert.riskScore,
+                    amount: alert.amount,
+                    scheme: alert.scheme,
+                    date: alert.date
+                }
+            });
 
         } catch (error) {
             console.error('Update alert status failed:', error);
