@@ -54,6 +54,8 @@ class Transaction(BaseModel):
     agency: str
     vendor: str
     transaction_time: Optional[str] = None
+    payment_behavior: Optional[str] = "REGULAR" 
+    timing_accuracy_days: Optional[int] = 0
 
 
 # ==================== STARTUP ====================
@@ -139,7 +141,9 @@ def predict_fraud(tx: Transaction):
             "amount": tx.amount,
             "agency": tx.agency,
             "vendor": tx.vendor,
-            "transaction_time": tx.transaction_time
+            "transaction_time": tx.transaction_time,
+            "payment_behavior": tx.payment_behavior,
+            "timing_accuracy_days": tx.timing_accuracy_days
         }
         
         # SINGLE DECISION AUTHORITY

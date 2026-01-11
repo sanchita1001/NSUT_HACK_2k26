@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Alert, AuditLog } from '../models';
+import { Alert, AuditLog, Vendor } from '../models';
 import { MLService } from '../services/ml.service';
 import { NotificationService } from '../services/notification.service';
 import { AuditLogService, AuditEventType } from '../services/audit.service';
@@ -165,11 +165,27 @@ export class AlertController {
                 return res.status(400).json({ error: 'Vendor is required' });
             }
 
+            // Fetch Vendor Profiling Data & History
+            const vendorProfile = await Vendor.findOne({ name: vendor });
+            let paymentBehavior = "REGULAR";
+            let daysSinceLast = 999; // Default to first transaction
+
+            if (vendorProfile) {
+                paymentBehavior = vendorProfile.paymentBehavior || "REGULAR";
+                const lastAlert = await Alert.findOne({ vendor: vendor }).sort({ timestamp: -1 });
+                if (lastAlert) {
+                    const diffTime = Math.abs(Date.now() - new Date(lastAlert.timestamp).getTime());
+                    daysSinceLast = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                }
+            }
+
             // Get ML risk score
             const mlResult = await MLService.predictFraud({
                 amount: Number(amount),
                 agency: scheme || "Unknown",
-                vendor: vendor || "Unknown"
+                vendor: vendor || "Unknown",
+                paymentBehavior,
+                daysSinceLastPayment: daysSinceLast
             });
 
             // Vendor history tracking

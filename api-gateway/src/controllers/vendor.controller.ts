@@ -88,7 +88,7 @@ export class VendorController {
         try {
             const {
                 id, name, gstin, address, riskScore, status, latitude, longitude, selectedScheme,
-                paymentBehavior, expectedMinAmount, expectedMaxAmount, timingToleranceDays
+                paymentBehavior, timingToleranceDays
             } = req.body;
 
             const vendor = await Vendor.create({
@@ -102,8 +102,6 @@ export class VendorController {
                 longitude,
                 operatingSchemes: selectedScheme ? [selectedScheme] : [],
                 paymentBehavior: paymentBehavior || 'REGULAR',
-                expectedMinAmount: expectedMinAmount ? Number(expectedMinAmount) : 0,
-                expectedMaxAmount: expectedMaxAmount ? Number(expectedMaxAmount) : 0,
                 timingToleranceDays: timingToleranceDays ? Number(timingToleranceDays) : 0
             });
 

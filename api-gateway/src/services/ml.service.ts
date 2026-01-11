@@ -3,13 +3,21 @@ import axios from 'axios';
 export class MLService {
     private static ML_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
 
-    static async predictFraud(data: { amount: number; agency: string; vendor: string }) {
+    static async predictFraud(data: {
+        amount: number;
+        agency: string;
+        vendor: string;
+        paymentBehavior?: string;
+        daysSinceLastPayment?: number;
+    }) {
         try {
             console.log(`[ML Service] Sending request to ${this.ML_URL}/predict`, data);
             const response = await axios.post(`${this.ML_URL}/predict`, {
                 amount: data.amount,
                 agency: data.agency,
-                vendor: data.vendor
+                vendor: data.vendor,
+                payment_behavior: data.paymentBehavior,
+                timing_accuracy_days: data.daysSinceLastPayment // Mapping to ML model field
             }, { timeout: 5000 }); // 5s timeout
 
             return {

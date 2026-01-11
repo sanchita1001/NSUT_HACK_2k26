@@ -22,8 +22,6 @@ const VendorSchema = new mongoose.Schema({
     longitude: Number,
     operatingSchemes: [String], // List of schemes the vendor is enrolled in
     paymentBehavior: String, // 'REGULAR' | 'QUARTERLY' | 'MILESTONE' | 'IRREGULAR'
-    expectedMinAmount: Number,
-    expectedMaxAmount: Number,
     timingToleranceDays: Number // Permitted deviation in days
 });
 
@@ -79,8 +77,6 @@ export interface IVendor extends mongoose.Document {
     longitude?: number;
     operatingSchemes?: string[];
     paymentBehavior?: string;
-    expectedMinAmount?: number;
-    expectedMaxAmount?: number;
     timingToleranceDays?: number;
 }
 
@@ -105,6 +101,7 @@ export interface IAlert extends mongoose.Document {
 export interface IAuditLog extends mongoose.Document {
     id: string;
     action: string;
+    eventType?: string;
     actor: string;
     target: string;
     timestamp: Date;

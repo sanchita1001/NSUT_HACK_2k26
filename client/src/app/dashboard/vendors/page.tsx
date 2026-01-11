@@ -33,8 +33,6 @@ export default function VendorsPage() {
         latitude: '',
         longitude: '',
         paymentBehavior: 'REGULAR',
-        expectedMinAmount: '',
-        expectedMaxAmount: '',
         timingToleranceDays: '0'
     });
     const [geocoding, setGeocoding] = useState(false);
@@ -75,8 +73,6 @@ export default function VendorsPage() {
                 latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
                 longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
                 paymentBehavior: formData.paymentBehavior,
-                expectedMinAmount: formData.expectedMinAmount ? parseFloat(formData.expectedMinAmount) : 0,
-                expectedMaxAmount: formData.expectedMaxAmount ? parseFloat(formData.expectedMaxAmount) : 0,
                 timingToleranceDays: formData.timingToleranceDays ? parseInt(formData.timingToleranceDays) : 0,
                 totalVolume: 0,
                 flaggedTransactions: 0,
@@ -85,7 +81,7 @@ export default function VendorsPage() {
             setShowModal(false);
             const res = await api.get('/vendors');
             setVendors(res.data);
-            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', expectedMinAmount: '', expectedMaxAmount: '', timingToleranceDays: '0' });
+            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0' });
         } catch (error) {
             console.error(error);
         }
@@ -261,31 +257,8 @@ export default function VendorsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Min Amount (₹)</label>
-                                    <input
-                                        type="number"
-                                        className="w-full border p-2 rounded"
-                                        placeholder="10000"
-                                        value={formData.expectedMinAmount}
-                                        onChange={e => setFormData({ ...formData, expectedMinAmount: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700">Max Amount (₹)</label>
-                                    <input
-                                        type="number"
-                                        className="w-full border p-2 rounded"
-                                        placeholder="500000"
-                                        value={formData.expectedMaxAmount}
-                                        onChange={e => setFormData({ ...formData, expectedMaxAmount: e.target.value })}
-                                    />
-                                </div>
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Initial Risk Score (0-100)</label>
+                            <div>    <label className="block text-sm font-medium text-gray-700">Initial Risk Score (0-100)</label>
                                 <input required type="number" min="0" max="100" className="w-full border p-2 rounded" value={formData.riskScore} onChange={e => setFormData({ ...formData, riskScore: parseInt(e.target.value) })} />
                             </div>
                             <div className="flex justify-end space-x-2 mt-4">
