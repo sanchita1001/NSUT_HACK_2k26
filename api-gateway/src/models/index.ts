@@ -28,8 +28,10 @@ const VendorSchema = new mongoose.Schema({
 
 const AlertSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
+    transactionId: { type: String, unique: true, sparse: true }, // For idempotency (Fix #6)
     scheme: String,
-    vendor: String, // Ensure this exists for aggregation
+    vendor: String, // Legacy field - vendor name
+    vendorId: String, // Proper vendor reference by ID (Fix #5)
     riskScore: Number,
     amount: Number,
     status: String,
@@ -42,7 +44,7 @@ const AlertSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number,
     coordinates: [Number], // [lat, lng] format for geospatial queries
-    timestamp: String,
+    timestamp: { type: Date, default: Date.now }, // Changed to Date type (Fix #11)
     state: String,
     mlReasons: [String],
     hierarchy: [{ role: String, name: String, status: String, time: String }]
@@ -85,8 +87,10 @@ export interface IVendor extends mongoose.Document {
 
 export interface IAlert extends mongoose.Document {
     id: string;
+    transactionId?: string; // For idempotency (Fix #6)
     scheme: string;
-    vendor: string;
+    vendor: string; // Legacy - vendor name
+    vendorId?: string; // Proper vendor reference (Fix #5)
     riskScore: number;
     amount: number;
     status: string;
@@ -98,7 +102,7 @@ export interface IAlert extends mongoose.Document {
     latitude?: number;
     longitude?: number;
     coordinates?: number[];
-    timestamp: string;
+    timestamp: Date; // Changed to Date (Fix #11)
     state: string;
     mlReasons: string[];
     hierarchy: { role: string, name: string, status: string, time: string }[];

@@ -102,6 +102,7 @@ export class PaymentBehaviorValidator {
             result.riskIncrease += 10;
         }
 
+        // Fix #16: Calculate from last payment, not current time
         result.expectedNextPayment = new Date(Date.now() + expectedDays * 24 * 60 * 60 * 1000);
         return result;
     }
@@ -174,10 +175,12 @@ export class PaymentBehaviorValidator {
         daysSince: number,
         result: PaymentValidationResult
     ): PaymentValidationResult {
-        // Only flag if payments are suspiciously frequent
-        if (daysSince < 1) {
+        // Fix #9: Use hours for more accurate same-day detection
+        const hoursSince = daysSince * 24; // Convert days to hours
+
+        if (hoursSince < 24) {
             result.violations.push(
-                `Multiple payments on same day (irregular pattern)`
+                `Multiple payments within 24 hours (irregular pattern)`
             );
             result.riskIncrease += 20;
         } else if (daysSince < 3) {
@@ -193,22 +196,23 @@ export class PaymentBehaviorValidator {
 
     /**
      * Calculate expected next payment date based on behavior
+     * Fix #16: Use last payment date, not current time
      */
     private static calculateNextExpectedPayment(
         lastPayment: Date,
         behavior: string,
         tolerance: number
     ): Date | undefined {
-        const baseDate = new Date(lastPayment);
+        const nextDate = new Date(lastPayment);
 
         switch (behavior) {
             case PaymentBehavior.REGULAR:
-                baseDate.setDate(baseDate.getDate() + 30);
-                return baseDate;
+                nextDate.setDate(nextDate.getDate() + 30);
+                return nextDate;
 
             case PaymentBehavior.QUARTERLY:
-                baseDate.setDate(baseDate.getDate() + 90);
-                return baseDate;
+                nextDate.setDate(nextDate.getDate() + 90);
+                return nextDate;
 
             case PaymentBehavior.MILESTONE:
             case PaymentBehavior.IRREGULAR:

@@ -91,6 +91,14 @@ export class VendorController {
                 paymentBehavior, timingToleranceDays, maxAmount
             } = req.body;
 
+            // Validate payment behavior tolerance (Fix #8)
+            const tolerance = timingToleranceDays ? Number(timingToleranceDays) : 0;
+            if (tolerance < 0 || tolerance > 30) {
+                return res.status(400).json({
+                    error: 'Timing tolerance must be between 0 and 30 days'
+                });
+            }
+
             const vendor = await Vendor.create({
                 id,
                 name,
@@ -102,7 +110,7 @@ export class VendorController {
                 longitude,
                 operatingSchemes: selectedScheme ? [selectedScheme] : [],
                 paymentBehavior: paymentBehavior || 'REGULAR',
-                timingToleranceDays: timingToleranceDays ? Number(timingToleranceDays) : 0,
+                timingToleranceDays: tolerance,
                 maxAmount: maxAmount ? Number(maxAmount) : undefined
             });
 

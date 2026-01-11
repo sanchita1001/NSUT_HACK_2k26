@@ -28,13 +28,19 @@ export class MLService {
             };
         } catch (error: any) {
             console.error("[ML Service] Prediction Failed:", error.message);
-            // Fallback Logic
-            let fallbackScore = 15;
-            let fallbackReasons = ["ML Service Unavailable - Default check"];
+            // Fallback Logic - Conservative approach (Fix #10)
+            let fallbackScore = 70; // Increased from 15 - require manual review when ML is down
+            let fallbackReasons = ["ML Service Unavailable - Manual review required"];
 
-            if (data.amount > 500000) {
-                fallbackScore = 60;
+            // Add basic heuristics
+            if (data.amount > 100000) {
+                fallbackScore = Math.min(fallbackScore + 10, 100);
                 fallbackReasons.push("High Value Transaction (Fallback)");
+            }
+
+            if (data.daysSinceLastPayment !== undefined && data.daysSinceLastPayment < 1) {
+                fallbackScore = Math.min(fallbackScore + 15, 100);
+                fallbackReasons.push("Very frequent payment (Fallback)");
             }
 
             return {
