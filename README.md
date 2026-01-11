@@ -126,11 +126,12 @@ Payment Block/Approve → Audit Log
 - **State Snapshots**: Before/after state tracking
 - **Compliance Ready**: CAG audit-ready logs
 
-#### 4. Fraud Simulator
-- **Testing Environment**: Generate synthetic transactions
-- **Batch Processing**: Test multiple scenarios
-- **Full Integration**: Triggers real ML detection pipeline
-- **Training Tool**: Analyst training and system validation
+#### 4. Smart Fraud Simulator ("The Playground")
+- **"White-Box" Testing**: Interactive playground to test the AI engine's behavior.
+- **Hypothetical Scenarios**: Adjust transaction amount, select specific vendors, and change scheme contexts to see immediate impact on Risk Scores.
+- **Real-Time Feedback**: Instant visual gauges and detailed reasoning (e.g., "Why did this get flagged?").
+- **Stateless Operation**: Simulations are isolated and do not pollute production audit logs.
+- **Training Tool**: Perfect for training officers on what constitutes suspicious activity.
 
 #### 5. Analytics & Reporting
 - **Predictive Analytics**: Forecast fraud trends
@@ -140,7 +141,17 @@ Payment Block/Approve → Audit Log
 
 #### 6. Real-Time Visualization
 - **Live Map**: Geographic distribution of alerts
-- **Network Graph**: Vendor relationship networks
+#### 6. Interactive Money Trail (Network Graph)
+- **Visual Link Analysis**: Interactive force-directed graph connecting Ministries → Schemes → Vendors.
+- **Collusion Detection**: Automatically highlights clusters of vendors sharing the same beneficiaries (Red Flags).
+- **Volume Visualization**: Edge thickness represents transaction volume.
+- **Risk Integration**: Nodes color-coded by real-time risk scores (Green/Amber/Red).
+- **Deep Dive**: Click any node to reveal transaction history and hidden connections.
+
+#### 7. Real-Time Visualization
+- **Live Map**: Geographic distribution of alerts
+- **Risk Dashboard**: Real-time KPIs and metrics
+- **Interactive Charts**: Trend analysis and insights
 - **Risk Dashboard**: Real-time KPIs and metrics
 - **Interactive Charts**: Trend analysis and insights
 
@@ -764,6 +775,51 @@ Get predictive analytics data.
     "totalAlerts": 156,
     "avgRiskScore": 72.5,
     "criticalAlerts": 45
+  }
+}
+```
+
+### Network Graph
+
+#### GET `/network/graph`
+Get global money flow graph data.
+
+**Response**:
+```json
+{
+  "nodes": [
+    { "id": "SCH-001", "label": "PM-KISAN", "type": "Scheme", "val": 20 },
+    { "id": "VEN-991", "label": "Agro Tech", "type": "Vendor", "val": 10 }
+  ],
+  "links": [
+    { "source": "SCH-001", "target": "VEN-991", "value": 5 }
+  ]
+}
+```
+
+### Simulator
+
+#### POST `/simulator/predict`
+Run a hypothetical fraud prediction.
+
+**Request**:
+```json
+{
+  "amount": 10000000,
+  "vendor": "Rural Infra Builders",
+  "scheme": "Road Works"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "prediction": {
+    "fraud_score": 0.85,
+    "risk_score": 92,
+    "isAnomaly": true,
+    "mlReasons": ["High Value Contract", "Vendor History Risk"]
   }
 }
 ```
