@@ -16,14 +16,20 @@ export default function AuditPage() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
 
+    import { API_ENDPOINTS, apiCall } from "@/lib/config";
+
+    // ...
+
     useEffect(() => {
-        fetch('http://localhost:8000/audit-logs')
-            .then(res => res.json())
+        apiCall<AuditLog[]>(API_ENDPOINTS.AUDIT_LOGS)
             .then(data => {
                 setLogs(data);
                 setLoading(false);
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error("Failed to fetch audit logs", err);
+                setLoading(false);
+            });
     }, []);
 
     return (

@@ -61,4 +61,12 @@ export interface Vendor {
     totalVolume: number;
     flaggedTransactions: number;
     accountStatus: 'ACTIVE' | 'FROZEN' | 'UNDER_WATCH';
+    operatingSchemes?: string[];
+    paymentBehavior?: string;
+    timingToleranceDays?: number;
+    maxAmount?: number;
+    totalTenderAmount?: number;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
 }
