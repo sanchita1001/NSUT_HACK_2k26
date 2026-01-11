@@ -23,7 +23,8 @@ export default function AddPaymentForm() {
         gstin: '',
         address: '',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        maxAmount: ''
     });
 
     const [geocoding, setGeocoding] = useState(false);
@@ -101,6 +102,7 @@ export default function AddPaymentForm() {
                     address: newVendor.address || 'Unknown',
                     latitude: newVendor.latitude ? parseFloat(newVendor.latitude) : undefined,
                     longitude: newVendor.longitude ? parseFloat(newVendor.longitude) : undefined,
+                    maxAmount: newVendor.maxAmount ? parseFloat(newVendor.maxAmount) : undefined,
                     riskScore: 0, // Default to 0 for new vendors as per requirement
                     status: 'ACTIVE'
                 });
@@ -285,6 +287,16 @@ export default function AddPaymentForm() {
                                                         readOnly
                                                         className="w-1/2 px-3 py-2 rounded border border-blue-200 bg-gray-50 text-gray-500 text-sm cursor-not-allowed"
                                                         placeholder="Lng"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <input
+                                                        type="number"
+                                                        name="maxAmount"
+                                                        value={newVendor.maxAmount}
+                                                        onChange={handleNewVendorChange}
+                                                        className="w-full px-3 py-2 rounded border border-blue-200 focus:ring-2 focus:ring-blue-200 outline-none text-sm text-gray-900"
+                                                        placeholder="Max Transaction Amount (₹) - Optional"
                                                     />
                                                 </div>
                                             </div>

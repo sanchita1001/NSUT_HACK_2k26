@@ -169,15 +169,23 @@ export class AlertController {
             const vendorProfile = await Vendor.findOne({ name: vendor });
             let paymentBehavior = "REGULAR";
             let daysSinceLast = 999; // Default to first transaction
+            let lastPaymentDate: Date | undefined;
 
             if (vendorProfile) {
                 paymentBehavior = vendorProfile.paymentBehavior || "REGULAR";
                 const lastAlert = await Alert.findOne({ vendor: vendor }).sort({ timestamp: -1 });
                 if (lastAlert) {
-                    const diffTime = Math.abs(Date.now() - new Date(lastAlert.timestamp).getTime());
+                    lastPaymentDate = new Date(lastAlert.timestamp);
+                    const diffTime = Math.abs(Date.now() - lastPaymentDate.getTime());
                     daysSinceLast = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 }
             }
+
+            // PAYMENT BEHAVIOR VALIDATION
+            const { PaymentBehaviorValidator } = require('../services/payment-behavior.service');
+            const behaviorValidation = vendorProfile
+                ? PaymentBehaviorValidator.validatePayment(vendorProfile, Number(amount), lastPaymentDate)
+                : { isValid: true, violations: [], riskIncrease: 0 };
 
             // Get ML risk score
             const mlResult = await MLService.predictFraud({
@@ -187,6 +195,12 @@ export class AlertController {
                 paymentBehavior,
                 daysSinceLastPayment: daysSinceLast
             });
+
+            // Add payment behavior violations to ML reasons
+            if (behaviorValidation.violations.length > 0) {
+                mlResult.mlReasons.push(...behaviorValidation.violations);
+                mlResult.riskScore += behaviorValidation.riskIncrease;
+            }
 
             // Vendor history tracking
             const vendorAlerts = await Alert.find({ vendor: vendor });

@@ -88,7 +88,7 @@ export class VendorController {
         try {
             const {
                 id, name, gstin, address, riskScore, status, latitude, longitude, selectedScheme,
-                paymentBehavior, timingToleranceDays
+                paymentBehavior, timingToleranceDays, maxAmount
             } = req.body;
 
             const vendor = await Vendor.create({
@@ -102,7 +102,8 @@ export class VendorController {
                 longitude,
                 operatingSchemes: selectedScheme ? [selectedScheme] : [],
                 paymentBehavior: paymentBehavior || 'REGULAR',
-                timingToleranceDays: timingToleranceDays ? Number(timingToleranceDays) : 0
+                timingToleranceDays: timingToleranceDays ? Number(timingToleranceDays) : 0,
+                maxAmount: maxAmount ? Number(maxAmount) : undefined
             });
 
             res.status(201).json(vendor);

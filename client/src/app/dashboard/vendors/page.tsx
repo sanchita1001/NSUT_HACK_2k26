@@ -35,7 +35,8 @@ export default function VendorsPage() {
         latitude: '',
         longitude: '',
         paymentBehavior: 'REGULAR',
-        timingToleranceDays: '0'
+        timingToleranceDays: '0',
+        maxAmount: ''
     });
     const [geocoding, setGeocoding] = useState(false);
 
@@ -76,6 +77,7 @@ export default function VendorsPage() {
                 longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
                 paymentBehavior: formData.paymentBehavior,
                 timingToleranceDays: formData.timingToleranceDays ? parseInt(formData.timingToleranceDays) : 0,
+                maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : undefined,
                 totalVolume: 0,
                 flaggedTransactions: 0,
                 accountStatus: 'ACTIVE'
@@ -83,7 +85,7 @@ export default function VendorsPage() {
             setShowModal(false);
             const res = await api.get('/vendors');
             setVendors(res.data);
-            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0' });
+            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0', maxAmount: '' });
 
             // Trigger map update for new vendor
             triggerMapUpdate();
@@ -260,6 +262,18 @@ export default function VendorsPage() {
                                         onChange={e => setFormData({ ...formData, timingToleranceDays: e.target.value })}
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Max Transaction Amount (₹)</label>
+                                <input
+                                    type="number"
+                                    className="w-full border p-2 rounded"
+                                    placeholder="e.g. 500000"
+                                    value={formData.maxAmount}
+                                    onChange={e => setFormData({ ...formData, maxAmount: e.target.value })}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Maximum allowed per transaction. Leave empty for no limit.</p>
                             </div>
 
 
