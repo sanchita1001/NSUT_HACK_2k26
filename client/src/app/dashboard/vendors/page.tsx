@@ -161,7 +161,7 @@ export default function VendorsPage() {
 
             {/* Create Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 text-gray-800">
                     <div className="bg-white p-6 rounded-lg w-full max-w-md">
                         <h2 className="text-lg font-bold mb-4">Register New Vendor</h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -243,7 +243,7 @@ export default function VendorsPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Entity</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Vendor Entity</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GSTIN / ID</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Volume</th>

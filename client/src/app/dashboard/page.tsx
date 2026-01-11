@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { Loader2, TrendingUp, AlertTriangle, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, Activity, RefreshCw, IndianRupee } from 'lucide-react';
 
 export default function DashboardPage() {
     const [stats, setStats] = useState<any>(null);
@@ -93,7 +93,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="p-3 bg-green-100 rounded-lg">
-                            <DollarSign className="h-6 w-6 text-green-600" />
+                            <IndianRupee className="h-8 w-8 text-green-600" />
                         </div>
                     </div>
                 </div>
