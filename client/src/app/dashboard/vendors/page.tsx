@@ -31,7 +31,11 @@ export default function VendorsPage() {
         address: '',
         selectedScheme: '',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        paymentBehavior: 'REGULAR',
+        expectedMinAmount: '',
+        expectedMaxAmount: '',
+        timingToleranceDays: '0'
     });
     const [geocoding, setGeocoding] = useState(false);
 
@@ -70,6 +74,10 @@ export default function VendorsPage() {
                 selectedScheme: formData.selectedScheme,
                 latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
                 longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
+                paymentBehavior: formData.paymentBehavior,
+                expectedMinAmount: formData.expectedMinAmount ? parseFloat(formData.expectedMinAmount) : 0,
+                expectedMaxAmount: formData.expectedMaxAmount ? parseFloat(formData.expectedMaxAmount) : 0,
+                timingToleranceDays: formData.timingToleranceDays ? parseInt(formData.timingToleranceDays) : 0,
                 totalVolume: 0,
                 flaggedTransactions: 0,
                 accountStatus: 'ACTIVE'
@@ -77,7 +85,7 @@ export default function VendorsPage() {
             setShowModal(false);
             const res = await api.get('/vendors');
             setVendors(res.data);
-            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '' });
+            setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', expectedMinAmount: '', expectedMaxAmount: '', timingToleranceDays: '0' });
         } catch (error) {
             console.error(error);
         }
@@ -226,6 +234,56 @@ export default function VendorsPage() {
                                     ))}
                                 </select>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Payment Behavior</label>
+                                    <select
+                                        className="w-full border p-2 rounded bg-white"
+                                        value={formData.paymentBehavior}
+                                        onChange={e => setFormData({ ...formData, paymentBehavior: e.target.value })}
+                                    >
+                                        <option value="REGULAR">Regular (Monthly)</option>
+                                        <option value="QUARTERLY">Quarterly</option>
+                                        <option value="MILESTONE">Milestone-based</option>
+                                        <option value="IRREGULAR">Irregular / Ad-hoc</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Tolerance (Days)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full border p-2 rounded"
+                                        placeholder="0"
+                                        value={formData.timingToleranceDays}
+                                        onChange={e => setFormData({ ...formData, timingToleranceDays: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Min Amount (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full border p-2 rounded"
+                                        placeholder="10000"
+                                        value={formData.expectedMinAmount}
+                                        onChange={e => setFormData({ ...formData, expectedMinAmount: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Max Amount (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full border p-2 rounded"
+                                        placeholder="500000"
+                                        value={formData.expectedMaxAmount}
+                                        onChange={e => setFormData({ ...formData, expectedMaxAmount: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Initial Risk Score (0-100)</label>
                                 <input required type="number" min="0" max="100" className="w-full border p-2 rounded" value={formData.riskScore} onChange={e => setFormData({ ...formData, riskScore: parseInt(e.target.value) })} />

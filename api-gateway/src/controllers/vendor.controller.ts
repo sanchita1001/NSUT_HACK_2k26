@@ -86,18 +86,25 @@ export class VendorController {
 
     static async createVendor(req: Request, res: Response) {
         try {
-            const { id, name, pan, address, riskScore, status, latitude, longitude, selectedScheme } = req.body;
+            const {
+                id, name, gstin, address, riskScore, status, latitude, longitude, selectedScheme,
+                paymentBehavior, expectedMinAmount, expectedMaxAmount, timingToleranceDays
+            } = req.body;
 
             const vendor = await Vendor.create({
                 id,
                 name,
-                pan,
+                gstin,
                 address,
                 riskScore: riskScore || 0,
-                status: status || 'ACTIVE',
+                accountStatus: status || 'ACTIVE',
                 latitude,
                 longitude,
-                operatingSchemes: selectedScheme ? [selectedScheme] : []
+                operatingSchemes: selectedScheme ? [selectedScheme] : [],
+                paymentBehavior: paymentBehavior || 'REGULAR',
+                expectedMinAmount: expectedMinAmount ? Number(expectedMinAmount) : 0,
+                expectedMaxAmount: expectedMaxAmount ? Number(expectedMaxAmount) : 0,
+                timingToleranceDays: timingToleranceDays ? Number(timingToleranceDays) : 0
             });
 
             res.status(201).json(vendor);

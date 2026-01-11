@@ -12,16 +12,19 @@ const SchemeSchema = new mongoose.Schema({
 const VendorSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     name: String,
+    address: String,
     gstin: String,
     riskScore: Number,
     totalVolume: Number,
     flaggedTransactions: Number,
-    flaggedTransactions: Number,
-    flaggedTransactions: Number,
     accountStatus: String, // 'ACTIVE' | 'FROZEN' | 'UNDER_WATCH'
     latitude: Number,
     longitude: Number,
-    operatingSchemes: [String] // List of schemes the vendor is enrolled in
+    operatingSchemes: [String], // List of schemes the vendor is enrolled in
+    paymentBehavior: String, // 'REGULAR' | 'QUARTERLY' | 'MILESTONE' | 'IRREGULAR'
+    expectedMinAmount: Number,
+    expectedMaxAmount: Number,
+    timingToleranceDays: Number // Permitted deviation in days
 });
 
 const AlertSchema = new mongoose.Schema({
@@ -66,6 +69,7 @@ export interface IScheme extends mongoose.Document {
 export interface IVendor extends mongoose.Document {
     id: string;
     name: string;
+    address?: string;
     gstin: string;
     riskScore: number;
     totalVolume: number;
@@ -74,6 +78,10 @@ export interface IVendor extends mongoose.Document {
     latitude?: number;
     longitude?: number;
     operatingSchemes?: string[];
+    paymentBehavior?: string;
+    expectedMinAmount?: number;
+    expectedMaxAmount?: number;
+    timingToleranceDays?: number;
 }
 
 export interface IAlert extends mongoose.Document {
