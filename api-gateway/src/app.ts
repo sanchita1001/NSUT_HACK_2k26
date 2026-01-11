@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import summaryRoutes from './routes/summary.routes';
 import simulatorRoutes from './routes/simulator.routes';
+import mapRoutes from './routes/map.routes';
 import { Scheme, Vendor, AuditLog } from './models';
 import { auditMiddleware } from './services/audit.service';
 
@@ -35,6 +36,7 @@ app.use('/network', networkRoutes);
 app.use('/analytics', analyticsRoutes);
 app.use('/summary', summaryRoutes);
 app.use('/simulator', simulatorRoutes);
+app.use('/map', mapRoutes);
 app.use('/', resourceRoutes);
 
 

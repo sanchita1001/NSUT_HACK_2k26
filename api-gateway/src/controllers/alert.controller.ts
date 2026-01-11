@@ -233,7 +233,7 @@ export class AlertController {
 
             const riskLevel = getRiskLevel(mlResult.riskScore);
 
-            // District assignment
+            // District assignment and coordinate fetching
             const districtCoords: { [key: string]: [number, number] } = {
                 "North Delhi": [28.7041, 77.1025],
                 "South Delhi": [28.5355, 77.2500],
@@ -242,8 +242,22 @@ export class AlertController {
                 "Central Delhi": [28.6448, 77.2167],
             };
 
-            const assignedDistrict = district || Object.keys(districtCoords)[Math.floor(Math.random() * 5)];
-            const coords = districtCoords[assignedDistrict] || [28.6139, 77.2090];
+            let assignedDistrict = district || "Central Delhi";
+            let coords: [number, number] = [28.6139, 77.2090]; // Default Delhi coordinates
+
+            // Try to get coordinates from vendor profile first
+            if (vendorProfile && vendorProfile.latitude && vendorProfile.longitude) {
+                coords = [vendorProfile.latitude, vendorProfile.longitude];
+                assignedDistrict = vendorProfile.address || assignedDistrict;
+            } else if (district && districtCoords[district]) {
+                // Fallback to district coordinates if vendor has no location
+                coords = districtCoords[district];
+                assignedDistrict = district;
+            } else if (!district) {
+                // Random district assignment only if no district and no vendor coords
+                assignedDistrict = Object.keys(districtCoords)[Math.floor(Math.random() * 5)];
+                coords = districtCoords[assignedDistrict];
+            }
 
             // Create alert
             const newAlert = await Alert.create({
@@ -258,6 +272,8 @@ export class AlertController {
                 timestamp: new Date().toISOString(),
                 mlReasons: mlResult.mlReasons,
                 district: assignedDistrict,
+                latitude: coords[0],
+                longitude: coords[1],
                 coordinates: coords,
                 description: description || `Potential fraud detected in ${scheme}`
             });

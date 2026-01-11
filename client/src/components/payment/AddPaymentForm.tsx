@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import { useMapUpdate } from '@/contexts/MapUpdateContext';
 import { Loader2, CheckCircle, AlertTriangle, XCircle, ShieldCheck, MapPin, Search } from 'lucide-react';
 
 export default function AddPaymentForm() {
+    const { triggerMapUpdate } = useMapUpdate();
     const [paymentMode, setPaymentMode] = useState<'EXISTING' | 'NEW'>('EXISTING');
 
     const [formData, setFormData] = useState({
@@ -105,6 +107,9 @@ export default function AddPaymentForm() {
 
                 targetVendorName = newVendor.name;
                 refreshData();
+
+                // Trigger map update for new vendor
+                triggerMapUpdate();
             }
 
             // Step 2: Process Transaction
@@ -115,6 +120,9 @@ export default function AddPaymentForm() {
                 description: formData.description
             });
             setResult(data);
+
+            // Trigger map update for new payment
+            triggerMapUpdate();
 
             // Reset if successful
             if (paymentMode === 'NEW') {

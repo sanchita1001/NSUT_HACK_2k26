@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import ChatbotAssistant from "@/components/ChatbotAssistant";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { MapUpdateProvider } from "@/contexts/MapUpdateContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -27,16 +28,18 @@ export default function DashboardLayout({
 
     return (
         <ErrorBoundary>
-            <div className="flex h-screen bg-slate-50">
-                <Sidebar />
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    <Header />
-                    <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6">
-                        {children}
-                    </main>
-                    <ChatbotAssistant />
+            <MapUpdateProvider>
+                <div className="flex h-screen bg-slate-50">
+                    <Sidebar />
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <Header />
+                        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6">
+                            {children}
+                        </main>
+                        <ChatbotAssistant />
+                    </div>
                 </div>
-            </div>
+            </MapUpdateProvider>
         </ErrorBoundary>
     );
 }

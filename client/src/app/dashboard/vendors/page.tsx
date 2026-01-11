@@ -5,8 +5,10 @@ import { Search, Building2, AlertTriangle, ArrowUpRight, Trash2, XCircle, MapPin
 import { Vendor } from "@fds/common";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useMapUpdate } from "@/contexts/MapUpdateContext";
 
 export default function VendorsPage() {
+    const { triggerMapUpdate } = useMapUpdate();
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [schemes, setSchemes] = useState<any[]>([]);
     const [deleteImpact, setDeleteImpact] = useState<{ vendorId: string, message: string, impact: any } | null>(null);
@@ -82,6 +84,9 @@ export default function VendorsPage() {
             const res = await api.get('/vendors');
             setVendors(res.data);
             setFormData({ name: '', gstin: '', riskScore: 0, address: '', selectedScheme: '', latitude: '', longitude: '', paymentBehavior: 'REGULAR', timingToleranceDays: '0' });
+
+            // Trigger map update for new vendor
+            triggerMapUpdate();
         } catch (error) {
             console.error(error);
         }

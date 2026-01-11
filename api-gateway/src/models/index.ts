@@ -40,6 +40,7 @@ const AlertSchema = new mongoose.Schema({
     district: String,
     latitude: Number,
     longitude: Number,
+    coordinates: [Number], // [lat, lng] format for geospatial queries
     timestamp: String,
     state: String,
     mlReasons: [String],
@@ -92,6 +93,9 @@ export interface IAlert extends mongoose.Document {
     beneficiary: string;
     account: string;
     district: string;
+    latitude?: number;
+    longitude?: number;
+    coordinates?: number[];
     timestamp: string;
     state: string;
     mlReasons: string[];
