@@ -10,7 +10,7 @@ import {
 import { API_ENDPOINTS, apiCall } from "@/lib/config";
 import Link from "next/link";
 import api from "@/lib/api";
-
+import BarChart from "./BarChart";
 interface AlertDetail {
     alert: any;
     timeline: any[];
@@ -230,7 +230,7 @@ export default function AlertDetailPage() {
                                         {new Date(alert.timestamp).toLocaleDateString()}
                                     </p>
                                 </div>
-                                <Clock className="h-8 w-8 text-purple-600" />
+                                <Clock className="h-8 w-8 text-blue-600" />
                             </div>
                         </div>
                     </div>
@@ -238,30 +238,19 @@ export default function AlertDetailPage() {
                     {/* Charts Row */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Risk Breakdown Chart */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 w-200">
                             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <BarChart3 className="h-5 w-5 text-blue-600" />
                                 Risk Breakdown
                             </h2>
-                            <div className="space-y-3">
-                                {Object.entries(riskBreakdown).map(([key, value]: [string, any]) => (
-                                    <div key={key} className="group">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm text-gray-700 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                            <span className="text-sm font-semibold text-gray-900">{value}</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                            <div
-                                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out group-hover:from-blue-600 group-hover:to-blue-700"
-                                                style={{ width: `${Math.min((value / 100) * 100, 100)}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                ))}</div>
+                            <div style={{ width: "700px", margin: "40px auto" }}>
+      <BarChart style={{ width: "100px" }} />
+
+    </div>
                         </div>
 
                         {/* Vendor Stats Chart */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 ml-35">
                             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                                 <PieChart className="h-5 w-5 text-green-600" />
                                 Vendor Statistics
@@ -275,12 +264,12 @@ export default function AlertDetailPage() {
                                     <p className="text-3xl font-bold text-orange-600">{vendorStats.averageRiskScore.toFixed(1)}</p>
                                     <p className="text-sm text-gray-600 mt-1">Avg Risk Score</p>
                                 </div>
-                                <div className="text-center p-4 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
+                                <div className="text-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
                                     <p className="text-3xl font-bold text-red-600">{vendorStats.highRiskCount}</p>
                                     <p className="text-sm text-gray-600 mt-1">High Risk</p>
                                 </div>
-                                <div className="text-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
-                                    <p className="text-3xl font-bold text-green-600">
+                                <div className="text-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                                    <p className="text-3xl font-bold text-blue-600">
                                         {(() => {
                                             const val = vendorStats.totalVolume;
                                             if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`;
