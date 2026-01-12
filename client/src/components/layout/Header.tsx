@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { Bell, Search, Globe, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+// import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Link from "next/link";
 import api from "@/lib/api";
 
 export function Header() {
-    const { user } = useAuth();
+    // const { user } = useAuth();
+    const user = { name: 'Admin User' }; // Static for now
     const { language, toggleLanguage, t } = useLanguage();
 
     const [showNotifications, setShowNotifications] = useState(false);

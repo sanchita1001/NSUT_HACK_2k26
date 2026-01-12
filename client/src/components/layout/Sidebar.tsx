@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+// import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
     LayoutDashboard,
@@ -19,7 +19,12 @@ import {
 
 export function Sidebar() {
     const pathname = usePathname();
-    const { logout } = useAuth();
+    // const { logout } = useAuth();
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+    };
     const { t } = useLanguage();
 
     const navItems = [

@@ -2,7 +2,7 @@
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
-import { useAuth } from "@/contexts/AuthContext";
+// import { useAuth } from "@/contexts/AuthContext";
 import ChatbotAssistant from "@/components/ChatbotAssistant";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { MapUpdateProvider } from "@/contexts/MapUpdateContext";
@@ -14,17 +14,20 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, isLoading } = useAuth();
+    // const { user, isLoading } = useAuth();
     const router = useRouter();
 
+    // Bypass auth check for demo
+    /*
     useEffect(() => {
         if (!isLoading && !user) {
             router.push("/");
         }
     }, [user, isLoading, router]);
+    */
 
-    if (isLoading) return <div className="h-screen w-screen flex items-center justify-center">Loading...</div>;
-    if (!user) return null;
+    // if (isLoading) return <div className="h-screen w-screen flex items-center justify-center">Loading...</div>;
+    // if (!user) return null;
 
     return (
         <ErrorBoundary>

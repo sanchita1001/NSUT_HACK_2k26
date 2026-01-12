@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Lock, Mail, AlertCircle, CheckCircle } from "lucide-react";
-import { API_ENDPOINTS, apiCall } from "@/lib/config";
+// import { API_ENDPOINTS, apiCall } from "@/lib/config";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,21 +18,21 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     setError("");
 
-    try {
-      const data = await apiCall<{ token: string; user: any }>(API_ENDPOINTS.LOGIN, {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+    // Simulate network delay
+    setTimeout(() => {
+      const mockUser = {
+        id: 'u-123',
+        name: 'Admin User',
+        role: 'admin',
+        department: 'Finance'
+      };
+      localStorage.setItem('token', 'mock-jwt-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      localStorage.setItem('fds_user', JSON.stringify(mockUser)); // For compatibility if needed
 
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-    } finally {
       setIsLoggingIn(false);
-    }
+    }, 1000);
   };
 
   const fillTestCredentials = () => {
