@@ -34,7 +34,7 @@ export function Sidebar() {
         { name: t('Alerts & Anomalies'), href: '/dashboard/alerts', icon: AlertTriangle },
         { name: t('Geospatial Map'), href: '/dashboard/map', icon: Map },
         { name: t('New Transaction'), href: '/dashboard/add-payment', icon: Landmark },
-        { name: t('Audit Log'), href: '/dashboard/audit', icon: ShieldAlert },
+        // { name: t('Audit Log'), href: '/dashboard/audit', icon: ShieldAlert },
     ];
 
     return (
